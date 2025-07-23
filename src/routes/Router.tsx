@@ -1,5 +1,5 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
-import App from '../App'
+import Landing from '../components/Landing'
 import { LoginPage } from '../pages'
 import AdminPage from '../pages/AdminPage'
 import Dashboard from '../features/admin/Dashboard'
@@ -15,7 +15,7 @@ import TeamDashboard from '../features/teams/TeamDashboard'
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <App />,
+    element: <Landing />,
   },
   {
     path: '/login',
