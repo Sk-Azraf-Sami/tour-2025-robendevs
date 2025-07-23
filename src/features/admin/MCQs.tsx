@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Card, 
   Typography, 
@@ -13,7 +13,8 @@ import {
   Popconfirm,
   message,
   Row,
-  Col
+  Col,
+  Spin
 } from 'antd'
 import {
   PlusOutlined,
@@ -21,80 +22,64 @@ import {
   DeleteOutlined,
   QuestionCircleOutlined
 } from '@ant-design/icons'
+import { FirestoreService } from '../../services/FireStoreService'
+import type { MCQ, MCQOption } from '../../types'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
 
-interface MCQOption {
-  text: string
-  points: number
-}
-
-interface MCQ {
-  id: string
-  question: string
-  options: MCQOption[]
-  createdAt: string
-}
-
 interface FormValues {
-  question: string
+  text: string
   options: MCQOption[]
 }
 
 export default function MCQs() {
-  const [mcqs, setMcqs] = useState<MCQ[]>([
-    {
-      id: "1",
-      question: "What year was the Eiffel Tower completed?",
-      options: [
-        { text: "1887", points: 0 },
-        { text: "1889", points: 10 },
-        { text: "1891", points: 0 },
-        { text: "1893", points: 0 },
-      ],
-      createdAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      question: "Which planet is known as the Red Planet?",
-      options: [
-        { text: "Venus", points: 0 },
-        { text: "Mars", points: 10 },
-        { text: "Jupiter", points: 0 },
-        { text: "Saturn", points: 0 },
-      ],
-      createdAt: "2024-01-14",
-    },
-  ])
-
+  const [mcqs, setMcqs] = useState<MCQ[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingMCQ, setEditingMCQ] = useState<MCQ | null>(null)
   const [form] = Form.useForm()
 
-  const handleSubmit = (values: FormValues) => {
-    if (editingMCQ) {
-      setMcqs(prev => 
-        prev.map(mcq => 
-          mcq.id === editingMCQ.id 
-            ? { ...mcq, question: values.question, options: values.options }
-            : mcq
-        )
-      )
-      message.success('MCQ updated successfully')
-    } else {
-      const newMCQ: MCQ = {
-        id: Date.now().toString(),
-        question: values.question,
-        options: values.options,
-        createdAt: new Date().toISOString().split("T")[0],
+  // Load MCQs from Firestore
+  useEffect(() => {
+    async function fetchMCQs() {
+      setIsLoading(true)
+      try {
+        const data = await FirestoreService.getAllMCQs()
+        setMcqs(data)
+      } catch (err) {
+        message.error('Failed to load MCQs')
       }
-      setMcqs(prev => [...prev, newMCQ])
-      message.success('MCQ created successfully')
+      setIsLoading(false)
     }
+    fetchMCQs()
+  }, [])
 
-    setIsModalOpen(false)
-    resetForm()
+  const handleSubmit = async (values: FormValues) => {
+    setIsLoading(true)
+    try {
+      if (editingMCQ) {
+        await FirestoreService.updateMCQ(editingMCQ.id, {
+          text: values.text,
+          options: values.options
+        })
+        message.success('MCQ updated successfully')
+      } else {
+        await FirestoreService.createMCQ({
+          text: values.text,
+          options: values.options
+        })
+        message.success('MCQ created successfully')
+      }
+      // Refresh MCQs
+      const data = await FirestoreService.getAllMCQs()
+      setMcqs(data)
+      setIsModalOpen(false)
+      resetForm()
+    } catch (err) {
+      message.error('Failed to save MCQ')
+    }
+    setIsLoading(false)
   }
 
   const resetForm = () => {
@@ -105,26 +90,33 @@ export default function MCQs() {
   const handleEdit = (mcq: MCQ) => {
     setEditingMCQ(mcq)
     form.setFieldsValue({
-      question: mcq.question,
+      text: mcq.text,
       options: mcq.options
     })
     setIsModalOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    setMcqs(prev => prev.filter(mcq => mcq.id !== id))
-    message.success('MCQ deleted successfully')
+  const handleDelete = async (id: string) => {
+    setIsLoading(true)
+    try {
+      await FirestoreService.deleteMCQ(id)
+      message.success('MCQ deleted successfully')
+      setMcqs(prev => prev.filter(mcq => mcq.id !== id))
+    } catch (err) {
+      message.error('Failed to delete MCQ')
+    }
+    setIsLoading(false)
   }
 
   const handleAdd = () => {
     setEditingMCQ(null)
     form.setFieldsValue({
-      question: '',
+      text: '',
       options: [
-        { text: '', points: 0 },
-        { text: '', points: 0 },
-        { text: '', points: 0 },
-        { text: '', points: 0 }
+        { text: '', value: 0 },
+        { text: '', value: 0 },
+        { text: '', value: 0 },
+        { text: '', value: 0 }
       ]
     })
     setIsModalOpen(true)
@@ -133,8 +125,8 @@ export default function MCQs() {
   const columns = [
     {
       title: 'Question',
-      dataIndex: 'question',
-      key: 'question',
+      dataIndex: 'text',
+      key: 'text',
       render: (text: string) => (
         <Text className="font-medium text-sm sm:text-base" ellipsis={{ tooltip: text }}>
           {text}
@@ -152,20 +144,13 @@ export default function MCQs() {
               <Text ellipsis={{ tooltip: option.text }} className="flex-1 mr-2">
                 {option.text}
               </Text>
-              {option.points > 0 && (
-                <Badge count={`${option.points}pts`} className="text-xs" />
+              {option.value > 0 && (
+                <Badge count={`${option.value}pts`} className="text-xs" />
               )}
             </div>
           ))}
         </div>
       )
-    },
-    {
-      title: 'Created',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      className: 'hidden sm:table-cell',
-      render: (date: string) => <Text className="text-sm text-gray-500">{date}</Text>
     },
     {
       title: 'Actions',
@@ -237,30 +222,36 @@ export default function MCQs() {
 
       {/* MCQs Table */}
       <Card>
-        <Table
-          columns={columns}
-          dataSource={mcqs}
-          rowKey="id"
-          scroll={{ x: 800 }}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
-            responsive: true,
-            showQuickJumper: false,
-            size: 'small'
-          }}
-          size="middle"
-          locale={{
-            emptyText: (
-              <div className="py-6 sm:py-8 text-center">
-                <QuestionCircleOutlined className="text-2xl sm:text-4xl text-gray-400 mb-2 sm:mb-4" />
-                <Title level={4} className="text-gray-500 text-base sm:text-lg">No questions found</Title>
-                <Text className="text-gray-400 text-sm">Get started by creating your first MCQ question.</Text>
-              </div>
-            )
-          }}
-        />
+        {isLoading ? (
+          <div className="py-12 text-center">
+            <Spin size="large" />
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={mcqs}
+            rowKey="id"
+            scroll={{ x: 800 }}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+              responsive: true,
+              showQuickJumper: false,
+              size: 'small'
+            }}
+            size="middle"
+            locale={{
+              emptyText: (
+                <div className="py-6 sm:py-8 text-center">
+                  <QuestionCircleOutlined className="text-2xl sm:text-4xl text-gray-400 mb-2 sm:mb-4" />
+                  <Title level={4} className="text-gray-500 text-base sm:text-lg">No questions found</Title>
+                  <Text className="text-gray-400 text-sm">Get started by creating your first MCQ question.</Text>
+                </div>
+              )
+            }}
+          />
+        )}
       </Card>
 
       {/* Add/Edit Modal */}
@@ -281,7 +272,7 @@ export default function MCQs() {
           className="mt-4"
         >
           <Form.Item
-            name="question"
+            name="text"
             label="Question"
             rules={[{ required: true, message: 'Please enter the question' }]}
           >
@@ -307,7 +298,7 @@ export default function MCQs() {
                     </Col>
                     <Col span={8}>
                       <Form.Item
-                        name={[name, 'points']}
+                        name={[name, 'value']}
                         rules={[{ required: true, message: 'Points required' }]}
                       >
                         <InputNumber
@@ -331,7 +322,7 @@ export default function MCQs() {
             }}>
               Cancel
             </Button>
-            <Button type="primary" htmlType="submit">
+            <Button type="primary" htmlType="submit" loading={isLoading}>
               {editingMCQ ? 'Update' : 'Create'} MCQ
             </Button>
           </div>
