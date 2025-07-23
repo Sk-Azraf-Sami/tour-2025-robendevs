@@ -1,32 +1,43 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Card, Tabs, Input, Button, Form, Alert, Typography } from 'antd'
 import { UserOutlined, LockOutlined, TrophyOutlined, UserSwitchOutlined, SettingOutlined } from '@ant-design/icons'
 import { useAuth } from '../contexts/auth'
+import { NavigationService } from '../services/NavigationService'
 
 const { Title, Text } = Typography
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const { login, isLoading } = useAuth()
+  const { login, isLoading, user } = useAuth()
   const navigate = useNavigate()
 
-  const handleSubmit = async (values: { email: string; password: string }) => {
+  // Handle navigation after successful login
+  useEffect(() => {
+    if (user && !isLoading) {
+      const redirectPath = NavigationService.getRedirectPath(user)
+      navigate(redirectPath)
+    }
+  }, [user, isLoading, navigate])
+
+  const handleParticipantSubmit = async (values: { email: string; password: string }) => {
     setError('')
     const success = await login(values.email, values.password)
-    if (success) {
-      navigate('/admin')
-    } else {
+    if (!success) {
+      setError('Invalid email or password')
+    }
+  }
+
+  const handleAdminSubmit = async (values: { email: string; password: string }) => {
+    setError('')
+    const success = await login(values.email, values.password)
+    if (!success) {
       setError('Invalid email or password')
     }
   }
 
   const handleTabChange = () => {
     setError('')
-    setEmail('')
-    setPassword('')
   }
 
   return (
@@ -75,7 +86,7 @@ export default function LoginPage() {
                       />
                     )}
 
-                    <Form onFinish={handleSubmit} layout="vertical" size="large">
+                    <Form onFinish={handleParticipantSubmit} layout="vertical" size="large">
                       <Form.Item
                         label="Email"
                         name="email"
@@ -87,8 +98,6 @@ export default function LoginPage() {
                         <Input 
                           prefix={<UserOutlined />}
                           placeholder="participant@example.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
                         />
                       </Form.Item>
 
@@ -100,8 +109,6 @@ export default function LoginPage() {
                         <Input.Password
                           prefix={<LockOutlined />}
                           placeholder="Enter your password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
                         />
                       </Form.Item>
 
@@ -119,7 +126,8 @@ export default function LoginPage() {
 
                     <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                       <Text strong className="text-blue-800 text-sm block mb-1">Demo Credentials:</Text>
-                      <Text className="text-blue-700 text-xs">participant@example.com / participant123</Text>
+                      <Text className="text-blue-700 text-xs block">participant@example.com / participant123</Text>
+                      <Text className="text-blue-700 text-xs block">team1@example.com / team123</Text>
                     </div>
                   </div>
                 )
@@ -148,7 +156,7 @@ export default function LoginPage() {
                       />
                     )}
 
-                    <Form onFinish={handleSubmit} layout="vertical" size="large">
+                    <Form onFinish={handleAdminSubmit} layout="vertical" size="large">
                       <Form.Item
                         label="Email"
                         name="email"
@@ -160,8 +168,6 @@ export default function LoginPage() {
                         <Input 
                           prefix={<UserOutlined />}
                           placeholder="admin@robendevs.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
                         />
                       </Form.Item>
 
@@ -173,8 +179,6 @@ export default function LoginPage() {
                         <Input.Password
                           prefix={<LockOutlined />}
                           placeholder="Enter admin password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
                         />
                       </Form.Item>
 

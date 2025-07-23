@@ -4,7 +4,8 @@ export interface User {
   id: string
   email: string
   name: string
-  role: 'admin' | 'participant'
+  role: 'admin' | 'participant' | 'team'
+  teamId?: string
 }
 
 export interface AuthContextType {
@@ -36,7 +37,24 @@ export const DUMMY_USERS = [
     id: '2',
     email: 'participant@example.com',
     password: 'participant123',
-    name: 'Participant User',
-    role: 'participant' as const
+    name: 'Team Participant',
+    role: 'participant' as const,
+    teamId: 'TEAM-PARTICIPANT'
+  },
+  {
+    id: '3',
+    email: 'team1@example.com',
+    password: 'team123',
+    name: 'Team Alpha',
+    role: 'team' as const,
+    teamId: 'TEAM-ALPHA'
+  },
+  {
+    id: '4',
+    email: 'team2@example.com',
+    password: 'team123',
+    name: 'Team Beta',
+    role: 'team' as const,
+    teamId: 'TEAM-BETA'
   }
 ]

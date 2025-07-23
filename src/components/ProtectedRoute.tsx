@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/auth'
+import { NavigationService } from '../services/NavigationService'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -20,11 +21,11 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
     )
   }
 
-  if (!user) {
+  if (!NavigationService.isAuthenticated(user)) {
     return <Navigate to="/login" replace />
   }
 
-  if (requireAdmin && user.role !== 'admin') {
+  if (requireAdmin && !NavigationService.canAccessAdmin(user)) {
     return <Navigate to="/" replace />
   }
 

@@ -49,7 +49,22 @@ export interface Admin {
   passwordHash: string;
 }
 
-// Additional types for UI components
+// Team-specific UI types
+export interface TeamData {
+  currentCheckpoint: number;
+  totalCheckpoints: number;
+  totalTime: number;
+  totalPoints: number;
+  status: 'waiting' | 'active' | 'completed';
+  nextLocation: string;
+}
+
+export interface TeamActivity {
+  action: string;
+  time: string;
+  points: string;
+}
+
 export interface TeamProgress {
   currentCheckpoint: number;
   totalCheckpoints: number;
@@ -64,5 +79,36 @@ export interface TeamProgress {
 export interface AuthUser {
   id: string;
   name: string;
-  type: 'team' | 'admin';
+  role: 'team' | 'admin';
+  teamId?: string;
+}
+
+// QR Scanner types
+export interface QRScanResult {
+  code: string;
+  isValid: boolean;
+  checkpointId?: string;
+}
+
+// MCQ types for team UI
+export interface MCQQuestionData {
+  id: string;
+  question: string;
+  options: Array<{
+    id: string;
+    text: string;
+    points: number;
+  }>;
+  correctAnswer: string;
+  timeLimit: number;
+}
+
+// Puzzle types for team UI
+export interface PuzzleData {
+  id: string;
+  text: string;
+  imageURL?: string;
+  code: string;
+  nextLocation: string;
+  hint: string;
 }

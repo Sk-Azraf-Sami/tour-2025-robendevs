@@ -25,8 +25,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     )
     
     if (foundUser) {
-      const { id, email, name, role } = foundUser
-      const userWithoutPassword = { id, email, name, role }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password, ...userWithoutPassword } = foundUser
       setUser(userWithoutPassword)
       localStorage.setItem('tour-2025-user', JSON.stringify(userWithoutPassword))
       setIsLoading(false)
