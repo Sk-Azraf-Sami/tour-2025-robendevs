@@ -82,34 +82,34 @@ export default function MCQPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <Title level={2}>Checkpoint Question</Title>
-        <Text type="secondary">Answer the multiple choice question to proceed</Text>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="text-center px-2">
+        <Title level={2} className="text-lg sm:text-xl md:text-2xl lg:text-3xl">Checkpoint Question</Title>
+        <Text type="secondary" className="text-sm sm:text-base">Answer the multiple choice question to proceed</Text>
       </div>
 
       {/* Timer Card */}
-      <Card className="border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-yellow-50">
+      <Card className="border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-yellow-50 mx-2 sm:mx-0">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <ClockCircleOutlined className="text-orange-600" />
-            <Text strong>Time Remaining</Text>
+            <ClockCircleOutlined className="text-orange-600 text-base sm:text-lg" />
+            <Text strong className="text-sm sm:text-base">Time Remaining</Text>
           </div>
-          <Text className="text-2xl font-bold text-orange-600">{formatTime(timeLeft)}</Text>
+          <Text className="text-xl sm:text-2xl font-bold text-orange-600">{formatTime(timeLeft)}</Text>
         </div>
         <Progress percent={getProgressPercentage()} strokeColor="#ea580c" className="mb-0" />
       </Card>
 
       {/* Question Card */}
-      <Card>
-        <div className="flex items-center gap-2 mb-4">
-          <QuestionCircleOutlined />
-          <Title level={4} className="!mb-0">Question</Title>
+      <Card className="mx-2 sm:mx-0">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <QuestionCircleOutlined className="text-base sm:text-lg" />
+          <Title level={4} className="!mb-0 text-base sm:text-lg">Question</Title>
         </div>
-        <Text type="secondary" className="block mb-4">Choose the correct answer from the options below</Text>
+        <Text type="secondary" className="block mb-3 sm:mb-4 text-sm sm:text-base">Choose the correct answer from the options below</Text>
         
-        <div className="space-y-6">
-          <Title level={3} className="leading-relaxed">{mcqData.question}</Title>
+        <div className="space-y-4 sm:space-y-6">
+          <Title level={3} className="leading-relaxed text-base sm:text-lg md:text-xl">{mcqData.question}</Title>
 
           <Radio.Group
             value={selectedAnswer}
@@ -117,11 +117,11 @@ export default function MCQPage() {
             disabled={isSubmitted}
             className="w-full"
           >
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {mcqData.options.map((option) => (
                 <div
                   key={option.id}
-                  className={`flex items-center p-4 border rounded-lg transition-colors ${
+                  className={`flex items-center p-3 sm:p-4 border rounded-lg transition-colors ${
                     isSubmitted
                       ? option.id === mcqData.correctAnswer
                         ? 'border-green-500 bg-green-50'
@@ -133,14 +133,14 @@ export default function MCQPage() {
                         : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <Radio value={option.id} className="mr-3" />
-                  <Text className="flex-1 text-base">{option.text}</Text>
+                  <Radio value={option.id} className="mr-2 sm:mr-3 flex-shrink-0" />
+                  <Text className="flex-1 text-sm sm:text-base">{option.text}</Text>
                   {isSubmitted && (
-                    <div className="flex items-center">
+                    <div className="flex items-center ml-2 flex-shrink-0">
                       {option.id === mcqData.correctAnswer ? (
-                        <CheckCircleOutlined className="text-green-500" />
+                        <CheckCircleOutlined className="text-green-500 text-base sm:text-lg" />
                       ) : option.id === selectedAnswer ? (
-                        <CloseCircleOutlined className="text-red-500" />
+                        <CloseCircleOutlined className="text-red-500 text-base sm:text-lg" />
                       ) : null}
                     </div>
                   )}
@@ -155,14 +155,14 @@ export default function MCQPage() {
               size="large" 
               onClick={handleSubmit} 
               disabled={!selectedAnswer} 
-              className="w-full"
+              className="w-full h-12 sm:h-auto text-sm sm:text-base"
             >
               Submit Answer
             </Button>
           )}
 
           {isSubmitted && (
-            <div className="text-center space-y-4">
+            <div className="text-center space-y-3 sm:space-y-4">
               {result === 'correct' ? (
                 <Alert
                   message="Correct Answer!"
@@ -170,6 +170,7 @@ export default function MCQPage() {
                   type="success"
                   showIcon
                   icon={<CheckCircleOutlined />}
+                  className="text-sm sm:text-base"
                 />
               ) : (
                 <Alert
@@ -178,6 +179,7 @@ export default function MCQPage() {
                   type="error"
                   showIcon
                   icon={<CloseCircleOutlined />}
+                  className="text-sm sm:text-base"
                 />
               )}
             </div>
@@ -186,9 +188,9 @@ export default function MCQPage() {
       </Card>
 
       {/* Help Card */}
-      <Card>
-        <Title level={4}>Need Help?</Title>
-        <ul className="text-sm space-y-1 text-gray-600 mt-4">
+      <Card className="mx-2 sm:mx-0">
+        <Title level={4} className="text-base sm:text-lg">Need Help?</Title>
+        <ul className="text-xs sm:text-sm space-y-1 text-gray-600 mt-3 sm:mt-4 pl-4">
           <li>• Read the question carefully before selecting an answer</li>
           <li>• You have 3 minutes to answer</li>
           <li>• Correct answers earn you bonus points</li>

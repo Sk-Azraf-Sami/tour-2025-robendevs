@@ -58,17 +58,17 @@ export default function TeamPage() {
         <div className="relative px-4 sm:px-6 lg:px-8 h-full">
           <div className="max-w-7xl mx-auto flex items-center justify-between h-full py-3 sm:py-4">
             {/* Left section - Title and Team info */}
-            <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4 flex-1 min-w-0">
               <div className="flex-shrink-0">
                 <div 
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center"
+                  className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center"
                   style={{
                     background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
                     boxShadow: '0 4px 12px rgba(251, 191, 36, 0.3)'
                   }}
                 >
                   <TrophyOutlined 
-                    className="text-lg sm:text-xl" 
+                    className="text-base sm:text-lg md:text-xl" 
                     style={{ color: '#fff' }} 
                   />
                 </div>
@@ -77,7 +77,7 @@ export default function TeamPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
                   <Text 
-                    className="font-bold text-lg sm:text-xl lg:text-2xl block truncate leading-tight" 
+                    className="font-bold text-base sm:text-lg md:text-xl lg:text-2xl block truncate leading-tight" 
                     style={{ color: '#fff', margin: 0 }}
                   >
                     Treasure Hunt
@@ -85,7 +85,7 @@ export default function TeamPage() {
                   
                   <div className="flex items-center gap-2 mt-1 sm:mt-0">
                     <div 
-                      className="w-2 h-2 rounded-full bg-green-400 animate-pulse"
+                      className="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0"
                       title="Active Game"
                     />
                     <Text 
@@ -100,12 +100,12 @@ export default function TeamPage() {
             </div>
             
             {/* Right section - Logout button */}
-            <div className="flex-shrink-0 ml-4">
+            <div className="flex-shrink-0 ml-2 sm:ml-4">
               <Button 
                 type="default" 
                 icon={<LogoutOutlined />}
                 onClick={handleLogout}
-                className="flex items-center gap-2 border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                className="flex items-center gap-1 sm:gap-2 border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                 size="middle"
                 style={{ 
                   background: 'rgba(255, 255, 255, 0.15)',
@@ -113,8 +113,9 @@ export default function TeamPage() {
                   color: '#fff',
                   fontWeight: '500',
                   borderRadius: '12px',
-                  height: '40px',
-                  minWidth: '40px'
+                  height: '36px',
+                  minWidth: '36px',
+                  padding: '0 8px'
                 }}
               >
                 <span className="hidden sm:inline font-medium">Logout</span>
@@ -132,7 +133,7 @@ export default function TeamPage() {
         />
       </Header>
       
-      <Content className="max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8">
+      <Content className="max-w-7xl mx-auto w-full p-3 sm:p-4 md:p-6 lg:p-8">
         <Outlet />
       </Content>
     </Layout>

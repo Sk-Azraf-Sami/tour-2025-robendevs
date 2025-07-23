@@ -38,32 +38,33 @@ export default function PuzzlePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <Title level={2}>Puzzle Challenge</Title>
-        <Text type="secondary">Solve the puzzle to get your next checkpoint location</Text>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="text-center px-2">
+        <Title level={2} className="text-lg sm:text-xl md:text-2xl lg:text-3xl">Puzzle Challenge</Title>
+        <Text type="secondary" className="text-sm sm:text-base">Solve the puzzle to get your next checkpoint location</Text>
       </div>
 
       {/* Puzzle Card */}
-      <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
-        <div className="flex items-center gap-2 mb-4">
-          <BulbOutlined className="text-purple-600" />
-          <Title level={4} className="!mb-0">Puzzle #{puzzleData.id}</Title>
+      <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 mx-2 sm:mx-0">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <BulbOutlined className="text-purple-600 text-base sm:text-lg" />
+          <Title level={4} className="!mb-0 text-base sm:text-lg">Puzzle #{puzzleData.id}</Title>
         </div>
-        <Text type="secondary" className="block mb-4">Read carefully and explore your surroundings</Text>
+        <Text type="secondary" className="block mb-3 sm:mb-4 text-sm sm:text-base">Read carefully and explore your surroundings</Text>
         
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {puzzleData.imageURL && (
             <div className="flex justify-center">
               <Image
                 src={puzzleData.imageURL}
                 alt="Puzzle clue image"
-                width={400}
-                height={300}
+                width="100%"
+                height="auto"
+                style={{ maxWidth: '400px', maxHeight: '300px' }}
                 className="rounded-lg border shadow-sm"
                 preview={{
                   mask: (
-                    <div className="text-white">
+                    <div className="text-white text-sm sm:text-base">
                       <EyeOutlined /> View Image
                     </div>
                   )
@@ -73,29 +74,30 @@ export default function PuzzlePage() {
           )}
 
           <Card size="small" className="bg-white border">
-            <Paragraph className="text-base leading-relaxed mb-0">
+            <Paragraph className="text-sm sm:text-base leading-relaxed mb-0">
               {puzzleData.text}
             </Paragraph>
           </Card>
 
-          <div className="flex items-center gap-2">
-            <Text strong>Code:</Text>
-            <Text code className="text-sm">{puzzleData.code}</Text>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <Text strong className="text-sm sm:text-base">Code:</Text>
+            <Text code className="text-xs sm:text-sm break-all">{puzzleData.code}</Text>
           </div>
         </div>
       </Card>
 
       {/* Hint Card */}
-      <Card>
-        <Title level={4}>💡 Hint</Title>
-        <Text type="secondary" className="block mb-4">Need a little help? Here's a clue to get you started</Text>
+      <Card className="mx-2 sm:mx-0">
+        <Title level={4} className="text-base sm:text-lg">💡 Hint</Title>
+        <Text type="secondary" className="block mb-3 sm:mb-4 text-sm sm:text-base">Need a little help? Here's a clue to get you started</Text>
         
         {!showHint ? (
           <Button
             type="dashed"
             icon={<BulbOutlined />}
             onClick={() => setShowHint(true)}
-            className="w-full"
+            className="w-full h-12 sm:h-auto text-sm sm:text-base"
+            size="large"
           >
             Show Hint
           </Button>
@@ -106,43 +108,44 @@ export default function PuzzlePage() {
             type="warning"
             showIcon
             icon={<BulbOutlined />}
+            className="text-sm sm:text-base"
           />
         )}
       </Card>
 
       {/* Action Card */}
-      <Card>
-        <Title level={4}>Complete the Puzzle</Title>
-        <Text type="secondary" className="block mb-4">Once you've solved the puzzle and found the answer, mark it as complete</Text>
+      <Card className="mx-2 sm:mx-0">
+        <Title level={4} className="text-base sm:text-lg">Complete the Puzzle</Title>
+        <Text type="secondary" className="block mb-3 sm:mb-4 text-sm sm:text-base">Once you've solved the puzzle and found the answer, mark it as complete</Text>
         
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {!isCompleted ? (
             <Button 
               type="primary" 
               size="large" 
               onClick={handleMarkComplete} 
-              className="w-full"
+              className="w-full h-12 sm:h-auto text-sm sm:text-base"
               icon={<CheckCircleOutlined />}
             >
               Mark as Completed
             </Button>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <Alert
                 message="Puzzle Completed!"
                 description="Well done! Here's your next destination:"
                 type="success"
                 showIcon
                 icon={<CheckCircleOutlined />}
+                className="text-sm sm:text-base"
               />
 
               <Card className="border-2 border-indigo-200 bg-indigo-50">
-                <div className="flex items-center gap-3">
-                  <EnvironmentOutlined className="text-indigo-600 text-xl" />
-                  <div>
-                    <Text strong className="text-indigo-900">Next Checkpoint</Text>
-                    <br />
-                    <Text className="text-indigo-700">{puzzleData.nextLocation}</Text>
+                <div className="flex items-start sm:items-center gap-3">
+                  <EnvironmentOutlined className="text-indigo-600 text-lg sm:text-xl flex-shrink-0 mt-1 sm:mt-0" />
+                  <div className="min-w-0 flex-1">
+                    <Text strong className="text-indigo-900 text-sm sm:text-base block">Next Checkpoint</Text>
+                    <Text className="text-indigo-700 text-sm sm:text-base break-words">{puzzleData.nextLocation}</Text>
                   </div>
                 </div>
               </Card>
@@ -151,7 +154,7 @@ export default function PuzzlePage() {
                 type="primary" 
                 size="large" 
                 onClick={handleNextCheckpoint} 
-                className="w-full"
+                className="w-full h-12 sm:h-auto text-sm sm:text-base"
                 icon={<ArrowRightOutlined />}
               >
                 Continue to Next Checkpoint
@@ -162,9 +165,9 @@ export default function PuzzlePage() {
       </Card>
 
       {/* Instructions Card */}
-      <Card>
-        <Title level={4}>How to Solve</Title>
-        <ul className="text-sm space-y-2 text-gray-600 mt-4">
+      <Card className="mx-2 sm:mx-0">
+        <Title level={4} className="text-base sm:text-lg">How to Solve</Title>
+        <ul className="text-xs sm:text-sm space-y-1 sm:space-y-2 text-gray-600 mt-3 sm:mt-4 pl-4">
           <li>• Read the puzzle description carefully</li>
           <li>• Use the image as a visual clue</li>
           <li>• Explore the area mentioned in the puzzle</li>
