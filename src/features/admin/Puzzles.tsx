@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Card, 
   Typography, 
@@ -23,17 +23,11 @@ import {
   QrcodeOutlined,
   UploadOutlined
 } from '@ant-design/icons'
+import { FirestoreService } from '../../services/FireStoreService'
+import type { Puzzle } from '../../types'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
-
-interface PuzzleData {
-  id: string
-  text: string
-  imageURL?: string
-  code: string
-  createdAt: string
-}
 
 interface FormValues {
   text: string
@@ -42,69 +36,87 @@ interface FormValues {
 }
 
 export default function Puzzles() {
-  const [puzzles, setPuzzles] = useState<PuzzleData[]>([
-    {
-      id: "1",
-      text: "Find the statue of the famous explorer who discovered this land. Look for the bronze plaque at its base.",
-      imageURL: "/placeholder.svg",
-      code: "EXPLORER_STATUE_001",
-      createdAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      text: "Locate the red door with the golden handle. Count the windows above it and multiply by 3.",
-      code: "RED_DOOR_PUZZLE_002",
-      createdAt: "2024-01-14",
-    },
-  ])
-
+  const [puzzles, setPuzzles] = useState<Puzzle[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingPuzzle, setEditingPuzzle] = useState<PuzzleData | null>(null)
+  const [editingPuzzle, setEditingPuzzle] = useState<Puzzle | null>(null)
   const [form] = Form.useForm()
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Load puzzles from Firestore
+  useEffect(() => {
+    async function fetchPuzzles() {
+      setIsLoading(true)
+      try {
+        const data = await FirestoreService.getAllPuzzles()
+        setPuzzles(data)
+      } catch (err) {
+        message.error('Failed to load puzzles')
+      }
+      setIsLoading(false)
+    }
+    fetchPuzzles()
+  }, [])
 
   const generateCode = () => {
     const randomCode = `PUZZLE_${Date.now().toString().slice(-6)}`
     form.setFieldValue('code', randomCode)
   }
 
-  const handleSubmit = (values: FormValues) => {
-    if (editingPuzzle) {
-      setPuzzles(prev => 
-        prev.map(puzzle => 
-          puzzle.id === editingPuzzle.id 
-            ? { ...puzzle, ...values }
-            : puzzle
-        )
-      )
-      message.success('Puzzle updated successfully')
-    } else {
-      const newPuzzle: PuzzleData = {
-        id: Date.now().toString(),
-        ...values,
-        createdAt: new Date().toISOString().split("T")[0],
-      }
-      setPuzzles(prev => [...prev, newPuzzle])
-      message.success('Puzzle created successfully')
+  const handleSubmit = async (values: FormValues) => {
+  setIsLoading(true)
+  try {
+    // Clean and validate the data before sending to Firestore
+    const puzzleData = {
+      text: values.text.trim(),
+      code: values.code.trim(),
+      // Only include imageURL if it has a value, otherwise omit it entirely
+      ...(values.imageURL && values.imageURL.trim() && { imageURL: values.imageURL.trim() })
     }
 
+    if (editingPuzzle) {
+      await FirestoreService.updatePuzzle(editingPuzzle.id, puzzleData)
+      message.success('Puzzle updated successfully')
+    } else {
+      await FirestoreService.createPuzzle(puzzleData)
+      message.success('Puzzle created successfully')
+    }
+    // Refresh puzzles
+    const data = await FirestoreService.getAllPuzzles()
+    setPuzzles(data)
     setIsModalOpen(false)
     resetForm()
+  } catch (err) {
+    console.error('Firestore error details:', err)
+    //message.error(`Failed to save puzzle: ${err.message || 'Unknown error'}`)
   }
+  setIsLoading(false)
+}
 
   const resetForm = () => {
     form.resetFields()
     setEditingPuzzle(null)
   }
 
-  const handleEdit = (puzzle: PuzzleData) => {
+  const handleEdit = (puzzle: Puzzle) => {
     setEditingPuzzle(puzzle)
-    form.setFieldsValue(puzzle)
+    form.setFieldsValue({
+      text: puzzle.text,
+      imageURL: puzzle.imageURL,
+      code: puzzle.code
+    })
     setIsModalOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    setPuzzles(prev => prev.filter(puzzle => puzzle.id !== id))
-    message.success('Puzzle deleted successfully')
+  const handleDelete = async (id: string) => {
+    setIsLoading(true)
+    try {
+      await FirestoreService.deletePuzzle(id)
+      message.success('Puzzle deleted successfully')
+      setPuzzles(prev => prev.filter(puzzle => puzzle.id !== id))
+    } catch (err) {
+      message.error('Failed to delete puzzle')
+    }
+    setIsLoading(false)
   }
 
   const handleAdd = () => {
@@ -122,7 +134,7 @@ export default function Puzzles() {
       title: 'Puzzle',
       dataIndex: 'text',
       key: 'text',
-      render: (text: string, record: PuzzleData) => (
+      render: (text: string, record: Puzzle) => (
         <div className="flex items-start gap-3">
           {record.imageURL && (
             <Image
@@ -152,15 +164,9 @@ export default function Puzzles() {
       )
     },
     {
-      title: 'Created',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date: string) => <Text className="text-sm text-gray-500">{date}</Text>
-    },
-    {
       title: 'Actions',
       key: 'actions',
-      render: (_: unknown, record: PuzzleData) => (
+      render: (_: unknown, record: Puzzle) => (
         <Space>
           <Button
             type="text"
@@ -247,28 +253,35 @@ export default function Puzzles() {
 
       {/* Puzzles Table */}
       <Card title={<span className="text-sm sm:text-base">Puzzles Library</span>}>
-        <Table
-          columns={columns}
-          dataSource={puzzles}
-          rowKey="id"
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
-            responsive: true
-          }}
-          scroll={{ x: 800 }}
-          size="middle"
-          locale={{
-            emptyText: (
-              <div className="py-6 sm:py-8 text-center">
-                <PictureOutlined className="text-2xl sm:text-4xl text-gray-400 mb-2 sm:mb-4" />
-                <Title level={4} className="text-gray-500 text-sm sm:text-base">No puzzles found</Title>
-                <Text className="text-gray-400 text-xs sm:text-sm">Get started by creating your first puzzle.</Text>
-              </div>
-            )
-          }}
-        />
+        {isLoading ? (
+          <div className="py-12 text-center">
+            <PictureOutlined className="text-4xl text-gray-400 mb-4" />
+            <Text className="text-gray-500 text-lg">Loading puzzles...</Text>
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={puzzles}
+            rowKey="id"
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+              responsive: true
+            }}
+            scroll={{ x: 800 }}
+            size="middle"
+            locale={{
+              emptyText: (
+                <div className="py-6 sm:py-8 text-center">
+                  <PictureOutlined className="text-2xl sm:text-4xl text-gray-400 mb-2 sm:mb-4" />
+                  <Title level={4} className="text-gray-500 text-sm sm:text-base">No puzzles found</Title>
+                  <Text className="text-gray-400 text-xs sm:text-sm">Get started by creating your first puzzle.</Text>
+                </div>
+              )
+            }}
+          />
+        )}
       </Card>
 
       {/* Add/Edit Modal */}
@@ -344,7 +357,7 @@ export default function Puzzles() {
             }}>
               Cancel
             </Button>
-            <Button type="primary" htmlType="submit">
+            <Button type="primary" htmlType="submit" loading={isLoading}>
               {editingPuzzle ? 'Update' : 'Create'} Puzzle
             </Button>
           </div>
