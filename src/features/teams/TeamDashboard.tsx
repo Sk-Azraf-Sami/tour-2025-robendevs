@@ -5,9 +5,22 @@ import QRScanner from './QRScanner'
 import MCQQuestion from './MCQQuestion'
 import PuzzleView from './PuzzleView'
 import { useAuth } from '../../contexts/auth'
+// Import FireStoreService and GameService for backend integration
+// import { FirestoreService } from '../../services/FireStoreService'
+// import { GameService } from '../../services/GameService'
+// Import types and constants
+// import { GAME_STAGES, POINTS_CONFIG } from './constants'
+// import type { TeamProgress as TeamProgressType, MCQ, Puzzle } from '../../types'
 
 const { Title, Text } = Typography
 
+/**
+ * Interface representing team's progress in the game
+ * 
+ * BACKEND INTEGRATION:
+ * This interface should match data coming from Firestore with appropriate types
+ * The 'any' types should be replaced with proper interfaces (MCQ, Puzzle)
+ */
 interface TeamProgress {
   currentCheckpoint: number
   totalCheckpoints: number
@@ -15,12 +28,41 @@ interface TeamProgress {
   elapsedTime: number
   isGameActive: boolean
   currentStage: 'scan' | 'mcq' | 'puzzle' | 'complete'
-  currentMCQ?: any
-  currentPuzzle?: any
+  currentMCQ?: any  // Replace with MCQ type from types/index.ts
+  currentPuzzle?: any  // Replace with Puzzle type from types/index.ts
 }
 
 export default function TeamDashboard() {
   const { user } = useAuth()
+  /**
+   * BACKEND INTEGRATION:
+   * 1. Replace this useState with a useEffect that fetches the team data from Firestore
+   * 2. Use the team's ID from the auth context to get the specific team document
+   * 3. Transform the Firestore data to match the TeamProgress interface
+   * 
+   * Example:
+   * useEffect(() => {
+   *   if (!user?.id) return;
+   *   
+   *   // Set up a real-time listener to the team document
+   *   const unsubscribe = FirestoreService.subscribeToTeam(user.id, (teamData) => {
+   *     if (!teamData) return;
+   *     
+   *     // Map Firestore data to local state
+   *     setProgress({
+   *       currentCheckpoint: teamData.currentIndex + 1,
+   *       totalCheckpoints: teamData.roadmap.length,
+   *       totalPoints: teamData.totalPoints,
+   *       elapsedTime: teamData.totalTime,
+   *       isGameActive: teamData.isActive,
+   *       currentStage: determineCurrentStage(teamData),
+   *       // Fetch current MCQ and puzzle if needed
+   *     });
+   *   });
+   *   
+   *   return () => unsubscribe();
+   * }, [user]);
+   */
   const [progress, setProgress] = useState<TeamProgress>({
     currentCheckpoint: 1,
     totalCheckpoints: 5,
@@ -35,6 +77,21 @@ export default function TeamDashboard() {
   useEffect(() => {
     if (!progress.isGameActive) return
     
+    /**
+     * BACKEND INTEGRATION:
+     * The timer functionality should be integrated with Firebase:
+     * 1. Instead of incrementing a local state, this should update the team's totalTime in Firestore
+     * 2. The backend should handle timer calculations and updates
+     * 
+     * Example:
+     * const interval = setInterval(async () => {
+     *   if (user?.id) {
+     *     await FirestoreService.updateTeam(user.id, {
+     *       totalTime: firebase.firestore.FieldValue.increment(1)
+     *     });
+     *   }
+     * }, 1000);
+     */
     const interval = setInterval(() => {
       setProgress(prev => ({
         ...prev,
@@ -53,13 +110,84 @@ export default function TeamDashboard() {
   }
 
   const handleQRScanned = (qrData: string) => {
+    /**
+     * BACKEND INTEGRATION:
+     * This function should:
+     * 1. Verify the QR code against the team's current checkpoint
+     * 2. Get the corresponding MCQ for this checkpoint
+     * 3. Update the team's progress in Firestore
+     * 
+     * Example:
+     * async function verifyQRAndProceed(qrCode: string) {
+     *   if (!user?.id) return;
+     *   
+     *   try {
+     *     // Verify QR code and fetch MCQ
+     *     const result = await GameService.verifyCheckpointQR(user.id, qrCode);
+     *     
+     *     if (result.success) {
+     *       // If valid, update team document and proceed to MCQ
+     *       setProgress(prev => ({ ...prev, currentStage: 'mcq', currentMCQ: result.mcq }));
+     *     } else {
+     *       // Show error message
+     *       message.error(result.message || 'Invalid QR code');
+     *     }
+     *   } catch (error) {
+     *     console.error('Error verifying QR:', error);
+     *     message.error('An error occurred while verifying the QR code');
+     *   }
+     * }
+     * 
+     * verifyQRAndProceed(qrData);
+     */
+    
     // Handle QR scan logic here
     console.log('QR Scanned:', qrData)
     setShowScanner(false)
     setProgress(prev => ({ ...prev, currentStage: 'mcq' }))
   }
 
-  const handleMCQSubmit = (answer: any) => {
+  const handleMCQSubmit = (answer: { optionId: string; points: number }) => {
+    /**
+     * BACKEND INTEGRATION:
+     * This function should:
+     * 1. Submit the MCQ answer to the backend
+     * 2. Calculate points based on answer
+     * 3. Update the team's points in Firestore
+     * 4. Fetch the puzzle for the current checkpoint
+     * 
+     * Example:
+     * async function submitMCQAnswer(mcqAnswer: { optionId: string; points: number }) {
+     *   if (!user?.id) return;
+     *   
+     *   try {
+     *     // Submit answer and get next puzzle
+     *     const result = await GameService.submitMCQAnswer(
+     *       user.id, 
+     *       progress.currentMCQ?.id, 
+     *       mcqAnswer.optionId
+     *     );
+     *     
+     *     if (result.success) {
+     *       // Update local state with new points and move to puzzle stage
+     *       setProgress(prev => ({ 
+     *         ...prev, 
+     *         currentStage: 'puzzle',
+     *         totalPoints: prev.totalPoints + mcqAnswer.points,
+     *         currentPuzzle: result.puzzle
+     *       }));
+     *     } else {
+     *       message.error(result.message || 'Failed to submit answer');
+     *     }
+     *   } catch (error) {
+     *     console.error('Error submitting MCQ answer:', error);
+     *     message.error('An error occurred while submitting your answer');
+     *   }
+     * }
+     * 
+     * submitMCQAnswer(answer);
+     */
+    
     // Handle MCQ submission
     console.log('MCQ Answer:', answer)
     setProgress(prev => ({ 
@@ -70,6 +198,45 @@ export default function TeamDashboard() {
   }
 
   const handlePuzzleComplete = () => {
+    /**
+     * BACKEND INTEGRATION:
+     * This function should:
+     * 1. Mark the current checkpoint as completed in Firestore
+     * 2. Update the team's currentIndex to move to the next checkpoint
+     * 3. If all checkpoints are complete, mark the team as finished
+     * 
+     * Example:
+     * async function completeCheckpoint() {
+     *   if (!user?.id) return;
+     *   
+     *   try {
+     *     // Complete current checkpoint and prepare for next
+     *     const result = await GameService.completeCheckpoint(user.id);
+     *     
+     *     if (result.isGameComplete) {
+     *       // Game is finished
+     *       setProgress(prev => ({ 
+     *         ...prev, 
+     *         currentStage: 'complete',
+     *         isGameActive: false
+     *       }));
+     *     } else {
+     *       // Move to next checkpoint
+     *       setProgress(prev => ({ 
+     *         ...prev, 
+     *         currentCheckpoint: prev.currentCheckpoint + 1,
+     *         currentStage: 'scan'
+     *       }));
+     *     }
+     *   } catch (error) {
+     *     console.error('Error completing checkpoint:', error);
+     *     message.error('An error occurred while updating your progress');
+     *   }
+     * }
+     * 
+     * completeCheckpoint();
+     */
+    
     // Move to next checkpoint
     const nextCheckpoint = progress.currentCheckpoint + 1
     if (nextCheckpoint > progress.totalCheckpoints) {
@@ -88,6 +255,13 @@ export default function TeamDashboard() {
   }
 
   if (progress.currentStage === 'complete') {
+    /**
+     * BACKEND INTEGRATION:
+     * For the completion screen:
+     * 1. Display final stats from Firestore data
+     * 2. Possibly send a completion notification to admins
+     * 3. Consider adding a leaderboard or final ranking
+     */
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center shadow-lg">
@@ -187,6 +361,11 @@ export default function TeamDashboard() {
           )}
 
           {progress.currentStage === 'mcq' && (
+            /**
+             * BACKEND INTEGRATION:
+             * 1. The currentMCQ prop should be fetched from Firestore
+             * 2. Structure should match the MCQQuestionProps interface
+             */
             <MCQQuestion 
               question={progress.currentMCQ}
               onSubmit={handleMCQSubmit}
@@ -194,6 +373,11 @@ export default function TeamDashboard() {
           )}
 
           {progress.currentStage === 'puzzle' && (
+            /**
+             * BACKEND INTEGRATION:
+             * 1. The currentPuzzle prop should be fetched from Firestore
+             * 2. Structure should match the PuzzleViewProps interface 
+             */
             <PuzzleView 
               puzzle={progress.currentPuzzle}
               onComplete={handlePuzzleComplete}
@@ -211,6 +395,12 @@ export default function TeamDashboard() {
 
       {/* QR Scanner Modal */}
       {showScanner && (
+        /**
+         * BACKEND INTEGRATION:
+         * The QR scanner component should be connected to actual camera
+         * functionality with proper error handling for device permissions
+         * Consider using a library like 'react-qr-reader' for production
+         */
         <QRScanner 
           onScan={handleQRScanned}
           onClose={() => setShowScanner(false)}

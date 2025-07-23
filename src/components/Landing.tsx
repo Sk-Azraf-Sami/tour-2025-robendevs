@@ -13,7 +13,7 @@ export default function Landing() {
       navigate('/login', { replace: true })
     } else if (user.role === 'admin') {
       navigate('/admin', { replace: true })
-    } else if (user.role === 'participant') {
+    } else if (user.role === 'team') {
       navigate('/team/dashboard', { replace: true })
     }
   }, [user, isLoading, navigate])

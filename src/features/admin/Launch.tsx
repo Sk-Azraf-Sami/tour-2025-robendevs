@@ -28,7 +28,7 @@ export default function Launch() {
     randomizeRoutes: true,
     enableHints: true,
     sendWelcomeMessage: true,
-    notifyParticipants: true
+    notifyTeams: true
   })
 
   const preflightChecks: PreflightCheck[] = [
@@ -278,17 +278,17 @@ export default function Launch() {
 
                   <div className="flex items-center justify-between py-2">
                     <div>
-                      <Text strong>Notify All Participants</Text>
+                      <Text strong>Notify All Teams</Text>
                       <br />
                       <Text className="text-sm text-gray-500">
-                        Send push notifications to all registered users
+                        Send push notifications to all registered teams
                       </Text>
                     </div>
                     <Checkbox
-                      checked={gameSettings.notifyParticipants}
+                      checked={gameSettings.notifyTeams}
                       onChange={(e) => setGameSettings({
                         ...gameSettings,
-                        notifyParticipants: e.target.checked
+                        notifyTeams: e.target.checked
                       })}
                     />
                   </div>
@@ -304,7 +304,7 @@ export default function Launch() {
                     <div>
                       <Text strong>12 Teams Registered</Text>
                       <br />
-                      <Text className="text-sm text-gray-600">48 total participants</Text>
+                      <Text className="text-sm text-gray-600">48 total team members</Text>
                     </div>
                   </div>
 
@@ -410,7 +410,7 @@ export default function Launch() {
             <Text>Welcome Message: {gameSettings.sendWelcomeMessage ? 'Yes' : 'No'}</Text>
           </List.Item>
           <List.Item>
-            <Text>Notify Participants: {gameSettings.notifyParticipants ? 'Yes' : 'No'}</Text>
+            <Text>Notify Teams: {gameSettings.notifyTeams ? 'Yes' : 'No'}</Text>
           </List.Item>
         </List>
       </Modal>

@@ -1,15 +1,27 @@
 import { useState } from 'react'
 import { Card, Radio, Button, Typography, Space, Alert } from 'antd'
 import { CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons'
+// Import timer hook if needed for countdown functionality
+// import { useCountdownTimer } from './hooks'
 
 const { Title, Text } = Typography
 
+/**
+ * BACKEND INTEGRATION:
+ * This interface should match the structure of MCQ options in Firestore
+ * See the MCQOption interface in types/index.ts for reference
+ */
 interface MCQOption {
   id: string
   text: string
   points: number
 }
 
+/**
+ * BACKEND INTEGRATION:
+ * This interface defines the props expected by the MCQQuestion component
+ * The 'question' prop should be populated from Firestore data
+ */
 interface MCQQuestionProps {
   question?: {
     id: string
@@ -22,6 +34,19 @@ interface MCQQuestionProps {
 export default function MCQQuestion({ question, onSubmit }: MCQQuestionProps) {
   const [selectedOption, setSelectedOption] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  /**
+   * BACKEND INTEGRATION:
+   * 1. The mock question should be replaced with actual data from Firestore
+   * 2. Consider adding a countdown timer for MCQ answering
+   * 3. The timeLimit could be a configurable setting in Firestore
+   * 
+   * Example of timer implementation:
+   * const { timeLeft, formatTime } = useCountdownTimer(180, () => {
+   *   // Auto-submit on timeout with no points
+   *   handleSubmit();
+   * });
+   */
 
   // Mock question data
   const mockQuestion = {

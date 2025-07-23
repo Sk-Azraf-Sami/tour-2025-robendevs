@@ -9,7 +9,7 @@ interface SettingsFormData {
   bonusPoints: number
   penaltyPoints: number
   maxTeams: number
-  maxParticipants: number
+  maxMembers: number
   gameDuration: number
   enableHints: boolean
   enableTimer: boolean
@@ -56,8 +56,7 @@ export default function Settings() {
           basePoints: 10,
           bonusPoints: 5,
           penaltyPoints: 2,
-          maxTeams: 50,
-          maxParticipants: 200,
+          maxTeams: 200,
           gameDuration: 120,
           enableHints: true,
           enableTimer: true,
@@ -128,8 +127,8 @@ export default function Settings() {
                 </Col>
                 <Col xs={24} sm={12}>
                   <Form.Item
-                    label="Max Participants"
-                    name="maxParticipants"
+                    label="Max Teams"
+                    name="maxTeams"
                   >
                     <InputNumber min={1} max={500} className="w-full" />
                   </Form.Item>
@@ -159,7 +158,7 @@ export default function Settings() {
                   <div>
                     <Text strong>Enable Timer</Text>
                     <br />
-                    <Text className="text-sm text-gray-500">Show countdown timer to participants</Text>
+                    <Text className="text-sm text-gray-500">Show countdown timer to teams</Text>
                   </div>
                   <Form.Item name="enableTimer" valuePropName="checked" className="!mb-0">
                     <Switch />
