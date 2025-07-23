@@ -78,6 +78,7 @@ export interface TeamProgress {
 
 export interface AuthUser {
   id: string;
+  email: string;
   name: string;
   role: 'team' | 'admin';
   teamId?: string;

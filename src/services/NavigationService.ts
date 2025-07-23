@@ -15,7 +15,6 @@ export class NavigationService {
     switch (user.role) {
       case 'admin':
         return '/admin'
-      case 'participant':
       case 'team':
         return '/team/dashboard'
       default:
@@ -34,7 +33,7 @@ export class NavigationService {
    * Check if user can access team routes
    */
   static canAccessTeam(user: User | null): boolean {
-    return user?.role === 'participant' || user?.role === 'team'
+    return user?.role === 'team'
   }
 
   /**
@@ -61,7 +60,6 @@ export class NavigationService {
     switch (user.role) {
       case 'admin':
         return 'Admin Dashboard'
-      case 'participant':
       case 'team':
         return 'Team Dashboard'
       default:

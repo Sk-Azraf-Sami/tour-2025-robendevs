@@ -20,7 +20,7 @@ export default function LoginPage() {
     }
   }, [user, isLoading, navigate])
 
-  const handleParticipantSubmit = async (values: { email: string; password: string }) => {
+  const handleTeamSubmit = async (values: { email: string; password: string }) => {
     setError('')
     const success = await login(values.email, values.password)
     if (!success) {
@@ -57,23 +57,23 @@ export default function LoginPage() {
         {/* Login Card with Tabs */}
         <Card className="shadow-lg rounded-xl border-0 mx-2 sm:mx-0">
           <Tabs 
-            defaultActiveKey="participant" 
+            defaultActiveKey="team" 
             centered 
             onChange={handleTabChange}
             size="small"
             items={[
               {
-                key: 'participant',
+                key: 'team',
                 label: (
                   <span className="flex items-center gap-2">
                     <UserSwitchOutlined />
-                    Participant
+                    Team
                   </span>
                 ),
                 children: (
                   <div className="px-1 sm:px-2 pb-4">
                     <div className="text-center mb-4 sm:mb-6">
-                      <Title level={4} className="!mb-2 text-base sm:text-lg">Participant Access</Title>
+                      <Title level={4} className="!mb-2 text-base sm:text-lg">Team Access</Title>
                       <Text type="secondary" className="text-sm sm:text-base">Join the treasure hunt adventure</Text>
                     </div>
                     
@@ -86,7 +86,7 @@ export default function LoginPage() {
                       />
                     )}
 
-                    <Form onFinish={handleParticipantSubmit} layout="vertical" size="large">
+                    <Form onFinish={handleTeamSubmit} layout="vertical" size="large">
                       <Form.Item
                         label="Email"
                         name="email"
@@ -97,7 +97,7 @@ export default function LoginPage() {
                       >
                         <Input 
                           prefix={<UserOutlined />}
-                          placeholder="participant@example.com"
+                          placeholder="team@example.com"
                         />
                       </Form.Item>
 
@@ -126,7 +126,7 @@ export default function LoginPage() {
 
                     <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                       <Text strong className="text-blue-800 text-sm block mb-1">Demo Credentials:</Text>
-                      <Text className="text-blue-700 text-xs block">participant@example.com / participant123</Text>
+                      <Text className="text-blue-700 text-xs block">team@example.com / team123</Text>
                       <Text className="text-blue-700 text-xs block">team1@example.com / team123</Text>
                     </div>
                   </div>

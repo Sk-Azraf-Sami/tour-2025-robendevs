@@ -244,7 +244,7 @@ export default function Teams() {
     { title: "Total Teams", value: teams.length, color: "text-blue-600" },
     { title: "Active Teams", value: teams.filter(t => t.status === 'active').length, color: "text-green-600" },
     { title: "Completed", value: teams.filter(t => t.status === 'completed').length, color: "text-purple-600" },
-    { title: "Total Participants", value: teams.reduce((sum, team) => sum + team.members, 0), color: "text-orange-600" }
+    { title: "Total Members", value: teams.reduce((sum, team) => sum + team.members, 0), color: "text-orange-600" }
   ]
 
   return (

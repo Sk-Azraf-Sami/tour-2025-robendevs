@@ -4,7 +4,7 @@ export interface User {
   id: string
   email: string
   name: string
-  role: 'admin' | 'participant' | 'team'
+  role: 'admin' | 'team'
   teamId?: string
 }
 
@@ -35,11 +35,11 @@ export const DUMMY_USERS = [
   },
   {
     id: '2',
-    email: 'participant@example.com',
-    password: 'participant123',
-    name: 'Team Participant',
-    role: 'participant' as const,
-    teamId: 'TEAM-PARTICIPANT'
+    email: 'team@example.com',
+    password: 'team123',
+    name: 'Team User',
+    role: 'team' as const,
+    teamId: 'TEAM-MAIN'
   },
   {
     id: '3',
