@@ -8,6 +8,7 @@ import PuzzleManager from '../features/admin/PuzzleManager'
 import GlobalSettings from '../features/admin/GlobalSettings'
 import LiveDashboard from '../features/admin/LiveDashboard'
 import ProtectedRoute from '../components/ProtectedRoute'
+import TeamDashboard from '../features/teams/TeamDashboard'
 
 const router = createBrowserRouter([
   {
@@ -17,6 +18,14 @@ const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+   {
+    path: '/team/dashboard',
+    element: (
+      <ProtectedRoute>
+        <TeamDashboard />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/admin',
