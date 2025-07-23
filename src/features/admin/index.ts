@@ -1,0 +1,5 @@
+export { default as AdminWelcome } from './AdminWelcome'
+export { default as MCQManager } from './MCQManager'
+export { default as PuzzleManager } from './PuzzleManager'
+export { default as GlobalSettings } from './GlobalSettings'
+export { default as LiveDashboard } from './LiveDashboard'
