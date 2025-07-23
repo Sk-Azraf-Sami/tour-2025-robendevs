@@ -2,11 +2,13 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import App from '../App'
 import { LoginPage } from '../pages'
 import AdminPage from '../pages/AdminPage'
-import AdminWelcome from '../features/admin/AdminWelcome'
-import MCQManager from '../features/admin/MCQManager'
-import PuzzleManager from '../features/admin/PuzzleManager'
-import GlobalSettings from '../features/admin/GlobalSettings'
-import LiveDashboard from '../features/admin/LiveDashboard'
+import Dashboard from '../features/admin/Dashboard'
+import MCQs from '../features/admin/MCQs'
+import Puzzles from '../features/admin/Puzzles'
+import Teams from '../features/admin/Teams'
+import Settings from '../features/admin/Settings'
+import Monitor from '../features/admin/Monitor'
+import Launch from '../features/admin/Launch'
 import ProtectedRoute from '../components/ProtectedRoute'
 import TeamDashboard from '../features/teams/TeamDashboard'
 
@@ -37,23 +39,31 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <AdminWelcome />,
+        element: <Dashboard />,
       },
       {
-        path: 'mcq-manager',
-        element: <MCQManager />,
+        path: 'mcqs',
+        element: <MCQs />,
       },
       {
-        path: 'puzzle-manager',
-        element: <PuzzleManager />,
+        path: 'puzzles',
+        element: <Puzzles />,
       },
       {
-        path: 'global-settings',
-        element: <GlobalSettings />,
+        path: 'teams',
+        element: <Teams />,
       },
       {
-        path: 'live-dashboard',
-        element: <LiveDashboard />,
+        path: 'settings',
+        element: <Settings />,
+      },
+      {
+        path: 'monitor',
+        element: <Monitor />,
+      },
+      {
+        path: 'launch',
+        element: <Launch />,
       },
     ],
   },

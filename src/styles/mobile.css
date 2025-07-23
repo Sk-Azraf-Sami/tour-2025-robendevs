@@ -1,0 +1,55 @@
+/* Mobile-specific styles for AdminSidebar */
+@media (max-width: 991.98px) {
+  .ant-layout-sider {
+    position: relative !important;
+  }
+  
+  .ant-drawer-body {
+    padding: 0 !important;
+  }
+  
+  .ant-menu-item {
+    margin: 0 !important;
+    height: auto !important;
+    line-height: 1.5 !important;
+    padding: 12px 16px !important;
+  }
+  
+  .ant-menu-item-icon {
+    min-width: 20px !important;
+    margin-right: 8px !important;
+  }
+  
+  .ant-btn-text.ant-btn-dangerous {
+    padding: 8px 16px !important;
+  }
+}
+
+/* Ensure proper touch targets on mobile */
+@media (max-width: 767.98px) {
+  .ant-menu-item {
+    padding: 16px 20px !important;
+    min-height: 48px !important;
+  }
+  
+  .ant-btn {
+    min-height: 44px !important;
+  }
+  
+  .ant-layout-header {
+    padding: 0 12px !important;
+  }
+}
+
+/* Fix for sidebar content overflow on small screens */
+.ant-layout-sider-children {
+  overflow-y: auto;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure drawer content fits properly */
+.ant-drawer-content-wrapper {
+  box-shadow: 2px 0 8px 0 rgba(29, 35, 41, 0.05);
+}
