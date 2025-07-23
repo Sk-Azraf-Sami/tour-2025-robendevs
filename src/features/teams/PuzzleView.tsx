@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Card, Button, Typography, Image, Alert, message } from 'antd'
 import { BulbOutlined, ArrowRightOutlined, EyeOutlined, CheckCircleOutlined, EnvironmentOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -14,11 +13,16 @@ interface PuzzleData {
   hint: string
 }
 
-export default function PuzzlePage() {
-  const navigate = useNavigate()
+interface PuzzleViewProps {
+  puzzle: PuzzleData
+  onComplete: () => void
+}
+
+export default function PuzzleView({ puzzle, onComplete }: PuzzleViewProps) {
   const [isCompleted, setIsCompleted] = useState(false)
   const [showHint, setShowHint] = useState(false)
 
+  // Hardcoded puzzleData for simulation/demo purposes
   const puzzleData: PuzzleData = {
     id: '1',
     text: 'Find the statue of the famous explorer who discovered this land. Look for the bronze plaque at its base. Count the number of words on the plaque and multiply by the number of stars on the explorer\'s hat.',
@@ -28,13 +32,13 @@ export default function PuzzlePage() {
     hint: 'The explorer is facing east, towards the rising sun.',
   }
 
+  // Use the prop if provided, otherwise fall back to the hardcoded puzzleData
+  const data = puzzle ?? puzzleData
+
   const handleMarkComplete = () => {
     setIsCompleted(true)
     message.success('Puzzle Completed! Great work! You can now proceed to the next checkpoint.')
-  }
-
-  const handleNextCheckpoint = () => {
-    navigate('/team/dashboard')
+    if (onComplete) onComplete()
   }
 
   return (
@@ -48,15 +52,15 @@ export default function PuzzlePage() {
       <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 mx-2 sm:mx-0">
         <div className="flex items-center gap-2 mb-3 sm:mb-4">
           <BulbOutlined className="text-purple-600 text-base sm:text-lg" />
-          <Title level={4} className="!mb-0 text-base sm:text-lg">Puzzle #{puzzleData.id}</Title>
+          <Title level={4} className="!mb-0 text-base sm:text-lg">Puzzle #{data.id}</Title>
         </div>
         <Text type="secondary" className="block mb-3 sm:mb-4 text-sm sm:text-base">Read carefully and explore your surroundings</Text>
         
         <div className="space-y-3 sm:space-y-4">
-          {puzzleData.imageURL && (
+          {data.imageURL && (
             <div className="flex justify-center">
               <Image
-                src={puzzleData.imageURL}
+                src={data.imageURL}
                 alt="Puzzle clue image"
                 width="100%"
                 height="auto"
@@ -75,13 +79,13 @@ export default function PuzzlePage() {
 
           <Card size="small" className="bg-white border">
             <Paragraph className="text-sm sm:text-base leading-relaxed mb-0">
-              {puzzleData.text}
+              {data.text}
             </Paragraph>
           </Card>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <Text strong className="text-sm sm:text-base">Code:</Text>
-            <Text code className="text-xs sm:text-sm break-all">{puzzleData.code}</Text>
+            <Text code className="text-xs sm:text-sm break-all">{data.code}</Text>
           </div>
         </div>
       </Card>
@@ -104,7 +108,7 @@ export default function PuzzlePage() {
         ) : (
           <Alert
             message="Hint"
-            description={puzzleData.hint}
+            description={data.hint}
             type="warning"
             showIcon
             icon={<BulbOutlined />}
@@ -145,7 +149,7 @@ export default function PuzzlePage() {
                   <EnvironmentOutlined className="text-indigo-600 text-lg sm:text-xl flex-shrink-0 mt-1 sm:mt-0" />
                   <div className="min-w-0 flex-1">
                     <Text strong className="text-indigo-900 text-sm sm:text-base block">Next Checkpoint</Text>
-                    <Text className="text-indigo-700 text-sm sm:text-base break-words">{puzzleData.nextLocation}</Text>
+                    <Text className="text-indigo-700 text-sm sm:text-base break-words">{data.nextLocation}</Text>
                   </div>
                 </div>
               </Card>
@@ -153,7 +157,7 @@ export default function PuzzlePage() {
               <Button 
                 type="primary" 
                 size="large" 
-                onClick={handleNextCheckpoint} 
+                onClick={onComplete} 
                 className="w-full h-12 sm:h-auto text-sm sm:text-base"
                 icon={<ArrowRightOutlined />}
               >
