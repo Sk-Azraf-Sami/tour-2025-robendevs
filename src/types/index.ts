@@ -15,6 +15,7 @@ export interface Team {
   totalPoints: number;
   legs: TeamLeg[];
   isActive: boolean;
+  createdAt?: string; 
 }
 
 export interface TeamLeg {

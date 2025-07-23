@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Card, 
   Typography, 
@@ -23,6 +23,8 @@ import {
   UserOutlined,
   LockOutlined
 } from '@ant-design/icons'
+import { FirestoreService } from '../../services/FireStoreService'
+import type { Team as FirestoreTeam } from '../../types'
 
 const { Title, Text } = Typography
 
@@ -46,71 +48,85 @@ interface FormValues {
 }
 
 export default function Teams() {
-  const [teams, setTeams] = useState<Team[]>([
-    {
-      id: "1",
-      name: "Team Alpha",
-      username: "team_alpha",
-      password: "alpha123",
-      members: 4,
-      progress: 75,
-      status: "active",
-      currentCheckpoint: 6,
-      createdAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      name: "Team Beta",
-      username: "team_beta",
-      password: "beta456",
-      members: 3,
-      progress: 50,
-      status: "active",
-      currentCheckpoint: 4,
-      createdAt: "2024-01-14",
-    },
-    {
-      id: "3",
-      name: "Team Gamma",
-      username: "team_gamma",
-      password: "gamma789",
-      members: 5,
-      progress: 100,
-      status: "completed",
-      currentCheckpoint: 8,
-      createdAt: "2024-01-13",
-    },
-  ])
-
+  const [teams, setTeams] = useState<Team[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTeam, setEditingTeam] = useState<Team | null>(null)
   const [form] = Form.useForm()
+  const [isLoading, setIsLoading] = useState(true)
 
-  const handleSubmit = (values: FormValues) => {
-    if (editingTeam) {
-      setTeams(prev => 
-        prev.map(team => 
-          team.id === editingTeam.id 
-            ? { ...team, ...values }
-            : team
-        )
-      )
-      message.success('Team updated successfully')
-    } else {
-      const newTeam: Team = {
-        id: Date.now().toString(),
-        ...values,
-        progress: 0,
-        status: "inactive",
-        currentCheckpoint: 0,
-        createdAt: new Date().toISOString().split("T")[0],
+  // Load teams from Firestore
+  useEffect(() => {
+    async function fetchTeams() {
+      setIsLoading(true)
+      try {
+        const firestoreTeams = await FirestoreService.getAllTeams()
+        // Map Firestore data to local Team interface
+        const mappedTeams: Team[] = firestoreTeams.map((t) => ({
+          id: t.id,
+          name: t.username, // Firestore doesn't have 'name', so use username as name
+          username: t.username,
+          password: t.passwordHash || '',
+          members: t.legs ? t.legs.length : 1,
+          progress: t.roadmap && t.roadmap.length > 0 ? Math.round(((t.currentIndex || 0) / t.roadmap.length) * 100) : 0,
+          status: t.isActive ? (t.currentIndex >= (t.roadmap?.length || 0) ? 'completed' : 'active') : 'inactive',
+          currentCheckpoint: (t.currentIndex || 0) + 1,
+          createdAt: t.createdAt || '',
+        }))
+        setTeams(mappedTeams)
+      } catch (err) {
+        message.error('Failed to load teams')
       }
-      setTeams(prev => [...prev, newTeam])
-      message.success('Team created successfully')
+      setIsLoading(false)
     }
+    fetchTeams()
+  }, [])
 
-    setIsModalOpen(false)
-    resetForm()
+  const handleSubmit = async (values: FormValues) => {
+    setIsLoading(true)
+    try {
+      if (editingTeam) {
+        // Update Firestore team
+        await FirestoreService.updateTeam(editingTeam.id, {
+          username: values.username,
+          passwordHash: values.password,
+          // Optionally update other fields
+        })
+        message.success('Team updated successfully')
+      } else {
+        // Create new Firestore team
+        const newTeam: Omit<FirestoreTeam, 'id'> = {
+          username: values.username,
+          passwordHash: values.password,
+          roadmap: [],
+          currentIndex: 0,
+          totalTime: 0,
+          totalPoints: 0,
+          legs: [],
+          isActive: false,
+        }
+        await FirestoreService.createTeam(newTeam)
+        message.success('Team created successfully')
+      }
+      // Refresh teams
+      const firestoreTeams = await FirestoreService.getAllTeams()
+      const mappedTeams: Team[] = firestoreTeams.map((t) => ({
+        id: t.id,
+        name: t.username,
+        username: t.username,
+        password: t.passwordHash || '',
+        members: t.legs ? t.legs.length : 1,
+        progress: t.roadmap && t.roadmap.length > 0 ? Math.round(((t.currentIndex || 0) / t.roadmap.length) * 100) : 0,
+        status: t.isActive ? (t.currentIndex >= (t.roadmap?.length || 0) ? 'completed' : 'active') : 'inactive',
+        currentCheckpoint: (t.currentIndex || 0) + 1,
+        createdAt: t.createdAt || '',
+      }))
+      setTeams(mappedTeams)
+      setIsModalOpen(false)
+      resetForm()
+    } catch (err: any) {
+      message.error(`Failed to save team: ${err.message || 'Unknown error'}`)
+    }
+    setIsLoading(false)
   }
 
   const resetForm = () => {
@@ -129,9 +145,16 @@ export default function Teams() {
     setIsModalOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    setTeams(prev => prev.filter(team => team.id !== id))
-    message.success('Team deleted successfully')
+  const handleDelete = async (id: string) => {
+    setIsLoading(true)
+    try {
+      await FirestoreService.deleteTeam(id)
+      message.success('Team deleted successfully')
+      setTeams(prev => prev.filter(team => team.id !== id))
+    } catch (err) {
+      message.error('Failed to delete team')
+    }
+    setIsLoading(false)
   }
 
   const handleAdd = () => {
@@ -191,7 +214,7 @@ export default function Teams() {
       render: (_: unknown, record: Team) => (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <Text className="text-xs sm:text-sm">Checkpoint {record.currentCheckpoint}/8</Text>
+            <Text className="text-xs sm:text-sm">Checkpoint {record.currentCheckpoint}/{record.progress === 100 ? record.currentCheckpoint : (record.progress > 0 ? Math.round(record.currentCheckpoint / (record.progress / 100)) : 8)}</Text>
             <Text className="text-xs sm:text-sm font-medium">{record.progress}%</Text>
           </div>
           <Progress percent={record.progress} size="small" />
@@ -284,6 +307,7 @@ export default function Teams() {
           columns={columns}
           dataSource={teams}
           rowKey="id"
+          loading={isLoading}
           scroll={{ x: 800 }}
           pagination={{
             pageSize: 10,
@@ -361,7 +385,7 @@ export default function Teams() {
             }}>
               Cancel
             </Button>
-            <Button type="primary" htmlType="submit">
+            <Button type="primary" htmlType="submit" loading={isLoading}>
               {editingTeam ? 'Update' : 'Create'} Team
             </Button>
           </div>

@@ -62,35 +62,43 @@ export default function Puzzles() {
     form.setFieldValue('code', randomCode)
   }
 
-  const handleSubmit = async (values: FormValues) => {
+  // ...existing code...
+
+const handleSubmit = async (values: FormValues) => {
   setIsLoading(true)
   try {
     // Clean and validate the data before sending to Firestore
-    const puzzleData = {
+    const puzzleData: Partial<Puzzle> = {
       text: values.text.trim(),
       code: values.code.trim(),
-      // Only include imageURL if it has a value, otherwise omit it entirely
-      ...(values.imageURL && values.imageURL.trim() && { imageURL: values.imageURL.trim() })
+    }
+
+    // Only include imageURL if it has a valid value
+    if (values.imageURL && values.imageURL.trim()) {
+      puzzleData.imageURL = values.imageURL.trim()
     }
 
     if (editingPuzzle) {
       await FirestoreService.updatePuzzle(editingPuzzle.id, puzzleData)
       message.success('Puzzle updated successfully')
     } else {
-      await FirestoreService.createPuzzle(puzzleData)
+      await FirestoreService.createPuzzle(puzzleData as Omit<Puzzle, 'id'>)
       message.success('Puzzle created successfully')
     }
+    
     // Refresh puzzles
     const data = await FirestoreService.getAllPuzzles()
     setPuzzles(data)
     setIsModalOpen(false)
     resetForm()
-  } catch (err) {
+  } catch (err: any) {
     console.error('Firestore error details:', err)
-    //message.error(`Failed to save puzzle: ${err.message || 'Unknown error'}`)
+    message.error(`Failed to save puzzle: ${err.message || 'Unknown error'}`)
   }
   setIsLoading(false)
 }
+
+// ...existing code...
 
   const resetForm = () => {
     form.resetFields()
