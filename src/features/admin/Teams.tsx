@@ -161,26 +161,26 @@ export default function Teams() {
       key: 'name',
       render: (name: string, record: Team) => (
         <div>
-          <div className="flex items-center gap-2">
-            <TeamOutlined className="text-blue-500" />
-            <Text strong>{name}</Text>
+          <Text strong className="text-sm sm:text-base">{name}</Text>
+          <div className="text-xs text-gray-500">
+            {record.members} member{record.members !== 1 ? 's' : ''}
           </div>
-          <Text className="text-xs text-gray-500">{record.members} members</Text>
         </div>
       )
     },
     {
       title: 'Credentials',
       key: 'credentials',
+      className: 'hidden sm:table-cell',
       render: (_: unknown, record: Team) => (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <UserOutlined className="text-gray-400" />
-            <Text code className="text-xs">{record.username}</Text>
+            <Text className="text-sm font-mono">{record.username}</Text>
           </div>
           <div className="flex items-center gap-2">
             <LockOutlined className="text-gray-400" />
-            <Text code className="text-xs">{record.password}</Text>
+            <Text className="text-sm font-mono">{record.password}</Text>
           </div>
         </div>
       )
@@ -189,15 +189,12 @@ export default function Teams() {
       title: 'Progress',
       key: 'progress',
       render: (_: unknown, record: Team) => (
-        <div className="w-32">
-          <Progress 
-            percent={record.progress} 
-            size="small" 
-            status={record.status === 'completed' ? 'success' : 'active'}
-          />
-          <Text className="text-xs text-gray-500">
-            Checkpoint {record.currentCheckpoint}/8
-          </Text>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <Text className="text-xs sm:text-sm">Checkpoint {record.currentCheckpoint}/8</Text>
+            <Text className="text-xs sm:text-sm font-medium">{record.progress}%</Text>
+          </div>
+          <Progress percent={record.progress} size="small" />
         </div>
       )
     },
@@ -208,21 +205,15 @@ export default function Teams() {
       render: (status: string) => (
         <Badge 
           status={getStatusColor(status) as "success" | "processing" | "default" | "error" | "warning"} 
-          text={status.charAt(0).toUpperCase() + status.slice(1)}
+          text={<span className="text-xs sm:text-sm">{status.charAt(0).toUpperCase() + status.slice(1)}</span>}
         />
       )
-    },
-    {
-      title: 'Created',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date: string) => <Text className="text-sm text-gray-500">{date}</Text>
     },
     {
       title: 'Actions',
       key: 'actions',
       render: (_: unknown, record: Team) => (
-        <Space>
+        <Space size="small">
           <Button
             type="text"
             icon={<EditOutlined />}
@@ -235,6 +226,7 @@ export default function Teams() {
             onConfirm={() => handleDelete(record.id)}
             okText="Yes"
             cancelText="No"
+            placement="topRight"
           >
             <Button
               type="text"
@@ -256,29 +248,31 @@ export default function Teams() {
   ]
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 sm:pb-4 space-y-3 sm:space-y-0">
         <div>
-          <Title level={2} className="!mb-1">Team Management</Title>
-          <Text className="text-gray-600">Create and manage team accounts for the treasure hunt</Text>
+          <Title level={2} className="!mb-1 text-lg sm:text-xl lg:text-2xl">Team Management</Title>
+          <Text className="text-gray-600 text-sm sm:text-base">Create and manage team accounts for the treasure hunt</Text>
         </div>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleAdd}
           size="large"
+          className="w-full sm:w-auto"
         >
-          Add New Team
+          <span className="hidden sm:inline">Add New Team</span>
+          <span className="sm:hidden">Add Team</span>
         </Button>
       </div>
 
       {/* Stats */}
-      <Row gutter={16}>
+      <Row gutter={[8, 8]} className="sm:gutter-16">
         {stats.map((stat, index) => (
-          <Col xs={6} key={index}>
+          <Col xs={12} sm={6} key={index}>
             <Card className="bg-gray-50 border border-gray-200">
-              <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
-              <div className="text-sm text-gray-600">{stat.title}</div>
+              <div className={`text-base sm:text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+              <div className="text-xs sm:text-sm text-gray-600 truncate">{stat.title}</div>
             </Card>
           </Col>
         ))}
@@ -290,14 +284,18 @@ export default function Teams() {
           columns={columns}
           dataSource={teams}
           rowKey="id"
+          scroll={{ x: 800 }}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+            responsive: true,
+            size: 'small'
           }}
+          size="middle"
           locale={{
             emptyText: (
-              <div className="py-8 text-center">
+              <div className="py-6 sm:py-8 text-center">
                 <TeamOutlined className="text-4xl text-gray-400 mb-4" />
                 <Title level={4} className="text-gray-500">No teams found</Title>
                 <Text className="text-gray-400">Get started by creating your first team.</Text>

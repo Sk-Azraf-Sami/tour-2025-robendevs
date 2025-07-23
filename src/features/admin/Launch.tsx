@@ -129,25 +129,25 @@ export default function Launch() {
     .every(check => check.status === 'success')
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 sm:pb-4 space-y-3 sm:space-y-0">
         <div>
-          <Title level={2} className="!mb-1 flex items-center gap-2">
+          <Title level={2} className="!mb-1 flex items-center gap-2 text-lg sm:text-xl lg:text-2xl">
             <RocketOutlined />
             Launch Game
           </Title>
-          <Text className="text-gray-600">Configure and launch your treasure hunt game</Text>
+          <Text className="text-gray-600 text-sm sm:text-base">Configure and launch your treasure hunt game</Text>
         </div>
       </div>
 
       {/* Progress Steps */}
       <Card>
-        <Steps current={currentStep} className="mb-6">
+        <Steps current={currentStep} className="mb-4 sm:mb-6" direction="vertical" responsive={false}>
           {steps.map((step, index) => (
             <Step
               key={index}
-              title={step.title}
-              description={step.description}
+              title={<span className="text-sm sm:text-base">{step.title}</span>}
+              description={<span className="text-xs sm:text-sm">{step.description}</span>}
             />
           ))}
         </Steps>
@@ -215,15 +215,15 @@ export default function Launch() {
       {currentStep === 1 && (
         <>
           {/* Launch Configuration */}
-          <Row gutter={[24, 24]}>
+          <Row gutter={[16, 16]} className="lg:gutter-24">
             <Col xs={24} lg={12}>
-              <Card title="Game Configuration">
+              <Card title={<span className="text-sm sm:text-base">Game Configuration</span>}>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between py-2">
-                    <div>
-                      <Text strong>Randomize Team Routes</Text>
+                    <div className="flex-1 pr-4">
+                      <Text strong className="text-sm sm:text-base">Randomize Team Routes</Text>
                       <br />
-                      <Text className="text-sm text-gray-500">
+                      <Text className="text-xs sm:text-sm text-gray-500">
                         Each team gets a unique checkpoint sequence
                       </Text>
                     </div>
@@ -239,10 +239,10 @@ export default function Launch() {
                   <Divider className="!my-2" />
 
                   <div className="flex items-center justify-between py-2">
-                    <div>
-                      <Text strong>Enable Hints System</Text>
+                    <div className="flex-1 pr-4">
+                      <Text strong className="text-sm sm:text-base">Enable Hints System</Text>
                       <br />
-                      <Text className="text-sm text-gray-500">
+                      <Text className="text-xs sm:text-sm text-gray-500">
                         Allow teams to request hints for challenges
                       </Text>
                     </div>

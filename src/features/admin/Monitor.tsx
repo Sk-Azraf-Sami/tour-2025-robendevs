@@ -202,36 +202,39 @@ export default function Monitor() {
   }, [])
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 sm:pb-4 space-y-3 sm:space-y-0">
         <div>
-          <Title level={2} className="!mb-1 flex items-center gap-2">
+          <Title level={2} className="!mb-1 flex items-center gap-2 text-lg sm:text-xl lg:text-2xl">
             <MonitorOutlined />
             Live Monitor
           </Title>
-          <Text className="text-gray-600">Real-time monitoring of team progress and game status</Text>
+          <Text className="text-gray-600 text-sm sm:text-base">Real-time monitoring of team progress and game status</Text>
         </div>
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={() => window.location.reload()}>
-            Refresh
+        <Space direction="horizontal" className="flex flex-wrap">
+          <Button icon={<ReloadOutlined />} onClick={() => window.location.reload()} size="small" className="text-xs sm:text-sm">
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
-          <Button icon={<ExportOutlined />} type="default">
-            Export Data
+          <Button icon={<ExportOutlined />} type="default" size="small" className="text-xs sm:text-sm">
+            <span className="hidden sm:inline">Export Data</span>
           </Button>
         </Space>
       </div>
 
       {/* Game Status Card */}
-      <Card title="Game Status" extra={
-        <Tag color={gameStatus === 'active' ? 'green' : gameStatus === 'paused' ? 'orange' : 'blue'}>
-          {gameStatus.toUpperCase()}
-        </Tag>
-      }>
-        <Row gutter={[16, 16]} align="middle">
+      <Card 
+        title={<span className="text-sm sm:text-base">Game Status</span>}
+        extra={
+          <Tag color={gameStatus === 'active' ? 'green' : gameStatus === 'paused' ? 'orange' : 'blue'}>
+            {gameStatus.toUpperCase()}
+          </Tag>
+        }
+      >
+        <Row gutter={[12, 16]} align="middle">
           <Col xs={24} sm={12}>
             <div className="text-center">
-              <Text className="block text-sm text-gray-500">Current Status</Text>
-              <Text className="text-2xl font-bold">
+              <Text className="block text-xs sm:text-sm text-gray-500">Current Status</Text>
+              <Text className="text-lg sm:text-2xl font-bold">
                 {gameStatus === 'waiting' ? 'Waiting to Start' :
                  gameStatus === 'active' ? 'Game Active' :
                  gameStatus === 'paused' ? 'Game Paused' : 'Game Completed'}
@@ -239,13 +242,14 @@ export default function Monitor() {
             </div>
           </Col>
           <Col xs={24} sm={12}>
-            <Space>
+            <Space direction="horizontal" className="flex flex-wrap justify-center sm:justify-start">
               {gameStatus === 'waiting' && (
                 <Button 
                   type="primary" 
                   icon={<PlayCircleOutlined />}
                   onClick={() => handleGameControl('start')}
-                  size="large"
+                  size="small"
+                  className="text-xs sm:text-sm"
                 >
                   Start Game
                 </Button>
@@ -255,15 +259,19 @@ export default function Monitor() {
                   <Button 
                     icon={<PauseCircleOutlined />}
                     onClick={() => handleGameControl('pause')}
+                    size="small"
+                    className="text-xs sm:text-sm"
                   >
-                    Pause
+                    <span className="hidden sm:inline">Pause</span>
                   </Button>
                   <Button 
                     danger 
                     icon={<StopOutlined />}
                     onClick={() => handleGameControl('stop')}
+                    size="small"
+                    className="text-xs sm:text-sm"
                   >
-                    Stop Game
+                    <span className="hidden sm:inline">Stop</span>
                   </Button>
                 </>
               )}
@@ -273,6 +281,8 @@ export default function Monitor() {
                     type="primary" 
                     icon={<PlayCircleOutlined />}
                     onClick={() => handleGameControl('start')}
+                    size="small"
+                    className="text-xs sm:text-sm"
                   >
                     Resume
                   </Button>
@@ -280,8 +290,10 @@ export default function Monitor() {
                     danger 
                     icon={<StopOutlined />}
                     onClick={() => handleGameControl('stop')}
+                    size="small"
+                    className="text-xs sm:text-sm"
                   >
-                    Stop Game
+                    <span className="hidden sm:inline">Stop</span>
                   </Button>
                 </>
               )}
@@ -291,16 +303,16 @@ export default function Monitor() {
       </Card>
 
       {/* Stats */}
-      <Row gutter={[16, 16]}>
+      <Row gutter={[12, 12]} className="sm:gutter-16">
         {stats.map((stat, index) => (
           <Col xs={12} sm={6} key={index}>
             <Card className={`${stat.bgColor} border ${stat.borderColor}`}>
               <div className="text-center">
-                <Text className={`text-2xl font-bold ${stat.color}`}>
+                <Text className={`text-lg sm:text-2xl font-bold ${stat.color}`}>
                   {stat.value}{stat.total && `/${stat.total}`}
                 </Text>
                 <br />
-                <Text className={`text-sm ${stat.color}`}>{stat.title}</Text>
+                <Text className={`text-xs sm:text-sm ${stat.color} truncate`}>{stat.title}</Text>
               </div>
             </Card>
           </Col>
@@ -308,17 +320,21 @@ export default function Monitor() {
       </Row>
 
       {/* Teams Table */}
-      <Card title="Team Progress" extra={
-        <Text className="text-sm text-gray-500">
-          Last updated: {new Date().toLocaleTimeString()}
-        </Text>
-      }>
+      <Card 
+        title={<span className="text-sm sm:text-base">Team Progress</span>}
+        extra={
+          <Text className="text-xs sm:text-sm text-gray-500">
+            Last updated: {new Date().toLocaleTimeString()}
+          </Text>
+        }
+      >
         <Table
           columns={columns}
           dataSource={teams}
           rowKey="id"
           pagination={false}
           size="middle"
+          scroll={{ x: 800 }}
           className="teams-monitor-table"
         />
       </Card>

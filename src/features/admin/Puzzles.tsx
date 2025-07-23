@@ -201,43 +201,44 @@ export default function Puzzles() {
   ]
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 sm:pb-4 space-y-3 sm:space-y-0">
         <div>
-          <Title level={2} className="!mb-1">Puzzle Management</Title>
-          <Text className="text-gray-600">Create, edit, and manage puzzles and challenges for the tour</Text>
+          <Title level={2} className="!mb-1 text-lg sm:text-xl lg:text-2xl">Puzzle Management</Title>
+          <Text className="text-gray-600 text-sm sm:text-base">Create, edit, and manage puzzles and challenges for the tour</Text>
         </div>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleAdd}
           size="large"
+          className="w-full sm:w-auto"
         >
-          Create New Puzzle
+          <span className="hidden sm:inline">Create New </span>Puzzle
         </Button>
       </div>
 
       {/* Stats */}
-      <Row gutter={16}>
+      <Row gutter={[12, 12]} className="sm:gutter-16">
         {stats.map((stat, index) => (
-          <Col xs={6} key={index}>
+          <Col xs={12} sm={6} key={index}>
             <Card className="bg-gray-50 border border-gray-200">
-              <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
-              <div className="text-sm text-gray-600">{stat.title}</div>
+              <div className={`text-lg sm:text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+              <div className="text-xs sm:text-sm text-gray-600 truncate">{stat.title}</div>
             </Card>
           </Col>
         ))}
       </Row>
 
       {/* Categories */}
-      <Card title="Puzzle Categories">
-        <Row gutter={16}>
+      <Card title={<span className="text-sm sm:text-base">Puzzle Categories</span>}>
+        <Row gutter={[12, 12]} className="sm:gutter-16">
           {categories.map((category, index) => (
-            <Col xs={8} key={index}>
+            <Col xs={12} sm={8} lg={6} key={index}>
               <Card className="text-center hover:shadow-md transition-shadow cursor-pointer border border-gray-200">
-                <div className="text-2xl mb-2">{category.icon}</div>
-                <Title level={5} className="!mb-1">{category.name}</Title>
-                <Text className="text-sm text-gray-500">{category.count} puzzles</Text>
+                <div className="text-xl sm:text-2xl mb-2">{category.icon}</div>
+                <Title level={5} className="!mb-1 text-sm sm:text-base">{category.name}</Title>
+                <Text className="text-xs sm:text-sm text-gray-500">{category.count} puzzles</Text>
               </Card>
             </Col>
           ))}
@@ -245,7 +246,7 @@ export default function Puzzles() {
       </Card>
 
       {/* Puzzles Table */}
-      <Card>
+      <Card title={<span className="text-sm sm:text-base">Puzzles Library</span>}>
         <Table
           columns={columns}
           dataSource={puzzles}
@@ -253,14 +254,17 @@ export default function Puzzles() {
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+            responsive: true
           }}
+          scroll={{ x: 800 }}
+          size="middle"
           locale={{
             emptyText: (
-              <div className="py-8 text-center">
-                <PictureOutlined className="text-4xl text-gray-400 mb-4" />
-                <Title level={4} className="text-gray-500">No puzzles found</Title>
-                <Text className="text-gray-400">Get started by creating your first puzzle.</Text>
+              <div className="py-6 sm:py-8 text-center">
+                <PictureOutlined className="text-2xl sm:text-4xl text-gray-400 mb-2 sm:mb-4" />
+                <Title level={4} className="text-gray-500 text-sm sm:text-base">No puzzles found</Title>
+                <Text className="text-gray-400 text-xs sm:text-sm">Get started by creating your first puzzle.</Text>
               </div>
             )
           }}
@@ -276,7 +280,9 @@ export default function Puzzles() {
           resetForm()
         }}
         footer={null}
-        width={600}
+        width="90%"
+        style={{ maxWidth: 600 }}
+        className="mobile-modal"
       >
         <Form
           form={form}

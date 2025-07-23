@@ -27,22 +27,23 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 sm:pb-4 space-y-3 sm:space-y-0">
         <div>
-          <Title level={2} className="!mb-1 flex items-center gap-2">
+          <Title level={2} className="!mb-1 flex items-center gap-2 text-lg sm:text-xl lg:text-2xl">
             <SettingOutlined />
             Global Settings
           </Title>
-          <Text className="text-gray-600">Configure application-wide settings and preferences</Text>
+          <Text className="text-gray-600 text-sm sm:text-base">Configure application-wide settings and preferences</Text>
         </div>
         <Button 
           type="primary" 
           icon={<SaveOutlined />}
           onClick={() => form.submit()}
           size="large"
+          className="w-full sm:w-auto"
         >
-          Save Settings
+          <span className="hidden sm:inline">Save </span>Settings
         </Button>
       </div>
 
@@ -65,10 +66,10 @@ export default function Settings() {
           pushNotifications: true,
         }}
       >
-        <Row gutter={[24, 0]}>
+        <Row gutter={[16, 16]} className="lg:gutter-24">
           {/* Game Configuration */}
           <Col xs={24} lg={12}>
-            <Card title="Game Configuration" className="h-full">
+            <Card title={<span className="text-sm sm:text-base">Game Configuration</span>} className="h-full">
               <Form.Item
                 label="Game Name"
                 name="gameName"
@@ -77,8 +78,8 @@ export default function Settings() {
                 <Input placeholder="Enter game name" />
               </Form.Item>
 
-              <Row gutter={16}>
-                <Col xs={12}>
+              <Row gutter={[12, 16]} className="sm:gutter-16">
+                <Col xs={24} sm={12}>
                   <Form.Item
                     label="Base Points"
                     name="basePoints"
@@ -87,7 +88,7 @@ export default function Settings() {
                     <InputNumber min={1} className="w-full" />
                   </Form.Item>
                 </Col>
-                <Col xs={12}>
+                <Col xs={24} sm={12}>
                   <Form.Item
                     label="Bonus Points (per minute saved)"
                     name="bonusPoints"
@@ -97,8 +98,8 @@ export default function Settings() {
                 </Col>
               </Row>
 
-              <Row gutter={16}>
-                <Col xs={12}>
+              <Row gutter={[12, 16]} className="sm:gutter-16">
+                <Col xs={24} sm={12}>
                   <Form.Item
                     label="Penalty Points (per minute over)"
                     name="penaltyPoints"
@@ -106,7 +107,7 @@ export default function Settings() {
                     <InputNumber min={0} className="w-full" />
                   </Form.Item>
                 </Col>
-                <Col xs={12}>
+                <Col xs={24} sm={12}>
                   <Form.Item
                     label="Game Duration (minutes)"
                     name="gameDuration"
@@ -116,8 +117,8 @@ export default function Settings() {
                 </Col>
               </Row>
 
-              <Row gutter={16}>
-                <Col xs={12}>
+              <Row gutter={[12, 16]} className="sm:gutter-16">
+                <Col xs={24} sm={12}>
                   <Form.Item
                     label="Max Teams"
                     name="maxTeams"
@@ -125,7 +126,7 @@ export default function Settings() {
                     <InputNumber min={1} max={100} className="w-full" />
                   </Form.Item>
                 </Col>
-                <Col xs={12}>
+                <Col xs={24} sm={12}>
                   <Form.Item
                     label="Max Participants"
                     name="maxParticipants"
@@ -139,13 +140,13 @@ export default function Settings() {
 
           {/* Game Features */}
           <Col xs={24} lg={12}>
-            <Card title="Game Features" className="h-full">
+            <Card title={<span className="text-sm sm:text-base">Game Features</span>} className="h-full">
               <div className="space-y-4">
                 <div className="flex items-center justify-between py-2">
                   <div>
-                    <Text strong>Enable Hints</Text>
+                    <Text strong className="text-sm sm:text-base">Enable Hints</Text>
                     <br />
-                    <Text className="text-sm text-gray-500">Allow teams to request hints</Text>
+                    <Text className="text-xs sm:text-sm text-gray-500">Allow teams to request hints</Text>
                   </div>
                   <Form.Item name="enableHints" valuePropName="checked" className="!mb-0">
                     <Switch />

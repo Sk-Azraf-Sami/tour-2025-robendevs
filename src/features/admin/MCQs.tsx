@@ -135,7 +135,11 @@ export default function MCQs() {
       title: 'Question',
       dataIndex: 'question',
       key: 'question',
-      render: (text: string) => <Text className="font-medium">{text}</Text>
+      render: (text: string) => (
+        <Text className="font-medium text-sm sm:text-base" ellipsis={{ tooltip: text }}>
+          {text}
+        </Text>
+      )
     },
     {
       title: 'Options',
@@ -144,8 +148,10 @@ export default function MCQs() {
       render: (options: MCQOption[]) => (
         <div className="space-y-1">
           {options.map((option, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <Text className="text-sm">{option.text}</Text>
+            <div key={index} className="flex items-center justify-between text-xs sm:text-sm">
+              <Text ellipsis={{ tooltip: option.text }} className="flex-1 mr-2">
+                {option.text}
+              </Text>
               {option.points > 0 && (
                 <Badge count={`${option.points}pts`} className="text-xs" />
               )}
@@ -158,13 +164,14 @@ export default function MCQs() {
       title: 'Created',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      className: 'hidden sm:table-cell',
       render: (date: string) => <Text className="text-sm text-gray-500">{date}</Text>
     },
     {
       title: 'Actions',
       key: 'actions',
       render: (_: unknown, record: MCQ) => (
-        <Space>
+        <Space size="small">
           <Button
             type="text"
             icon={<EditOutlined />}
@@ -177,6 +184,7 @@ export default function MCQs() {
             onConfirm={() => handleDelete(record.id)}
             okText="Yes"
             cancelText="No"
+            placement="topRight"
           >
             <Button
               type="text"
@@ -197,29 +205,31 @@ export default function MCQs() {
   ]
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 sm:pb-4 space-y-3 sm:space-y-0">
         <div>
-          <Title level={2} className="!mb-1">MCQ Management</Title>
-          <Text className="text-gray-600">Create and manage multiple choice questions for checkpoints</Text>
+          <Title level={2} className="!mb-1 text-lg sm:text-xl lg:text-2xl">MCQ Management</Title>
+          <Text className="text-gray-600 text-sm sm:text-base">Create and manage multiple choice questions for checkpoints</Text>
         </div>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleAdd}
           size="large"
+          className="w-full sm:w-auto"
         >
-          Add New Question
+          <span className="hidden sm:inline">Add New Question</span>
+          <span className="sm:hidden">Add Question</span>
         </Button>
       </div>
 
       {/* Stats */}
-      <Row gutter={16}>
+      <Row gutter={[12, 12]}>
         {stats.map((stat, index) => (
-          <Col xs={8} key={index}>
+          <Col xs={8} sm={8} lg={8} key={index}>
             <Card className="bg-gray-50 border border-gray-200">
-              <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
-              <div className="text-sm text-gray-600">{stat.title}</div>
+              <div className={`text-lg sm:text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+              <div className="text-xs sm:text-sm text-gray-600 truncate">{stat.title}</div>
             </Card>
           </Col>
         ))}
@@ -231,17 +241,22 @@ export default function MCQs() {
           columns={columns}
           dataSource={mcqs}
           rowKey="id"
+          scroll={{ x: 800 }}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+            responsive: true,
+            showQuickJumper: false,
+            size: 'small'
           }}
+          size="middle"
           locale={{
             emptyText: (
-              <div className="py-8 text-center">
-                <QuestionCircleOutlined className="text-4xl text-gray-400 mb-4" />
-                <Title level={4} className="text-gray-500">No questions found</Title>
-                <Text className="text-gray-400">Get started by creating your first MCQ question.</Text>
+              <div className="py-6 sm:py-8 text-center">
+                <QuestionCircleOutlined className="text-2xl sm:text-4xl text-gray-400 mb-2 sm:mb-4" />
+                <Title level={4} className="text-gray-500 text-base sm:text-lg">No questions found</Title>
+                <Text className="text-gray-400 text-sm">Get started by creating your first MCQ question.</Text>
               </div>
             )
           }}

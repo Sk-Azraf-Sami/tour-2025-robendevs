@@ -1,4 +1,4 @@
-import { Card, Typography, Row, Col, Badge, Statistic, Progress } from 'antd'
+import { Card, Typography, Row, Col, Badge, Progress } from 'antd'
 import {
   TeamOutlined,
   QuestionCircleOutlined,
@@ -51,51 +51,51 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 sm:pb-4 space-y-2 sm:space-y-0">
         <div>
-          <Title level={2} className="!mb-1">Dashboard Overview</Title>
-          <Text className="text-gray-600">Monitor your treasure hunt game in real-time</Text>
+          <Title level={2} className="!mb-1 text-lg sm:text-xl lg:text-2xl">Dashboard Overview</Title>
+          <Text className="text-gray-600 text-sm sm:text-base">Monitor your treasure hunt game in real-time</Text>
         </div>
         <Badge status="processing" text="Game Active" />
       </div>
 
       {/* Stats Cards */}
-      <Row gutter={[16, 16]}>
+      <Row gutter={[12, 12]} className="sm:gutter-16">
         {stats.map((stat, index) => (
-          <Col xs={24} sm={12} lg={6} key={index}>
+          <Col xs={12} sm={12} lg={6} key={index}>
             <Card className={`${stat.color} border hover:shadow-md transition-shadow`}>
-              <Statistic
-                title={stat.title}
-                value={stat.value}
-                prefix={stat.icon}
-                suffix={
-                  <div className="text-xs text-gray-500 mt-1">
-                    {stat.description}
-                  </div>
-                }
-              />
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-lg sm:text-2xl font-bold text-gray-900">{stat.value}</div>
+                  <div className="text-lg sm:text-2xl">{stat.icon}</div>
+                </div>
+                <div className="text-xs sm:text-sm font-medium text-gray-700 truncate">{stat.title}</div>
+                <div className="text-xs text-gray-500 hidden sm:block">
+                  {stat.description}
+                </div>
+              </div>
             </Card>
           </Col>
         ))}
       </Row>
 
       {/* Content Row */}
-      <Row gutter={[16, 16]}>
+      <Row gutter={[12, 12]} className="sm:gutter-16">
         {/* Recent Activity */}
         <Col xs={24} lg={12}>
           <Card 
             title={
               <div className="flex items-center gap-2">
                 <ClockCircleOutlined />
-                <span>Recent Activity</span>
+                <span className="text-sm sm:text-base">Recent Activity</span>
               </div>
             }
             className="h-full"
           >
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-2 border-b border-gray-100 last:border-b-0 space-y-1 sm:space-y-0">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <Text strong className="text-sm">{activity.team}</Text>
@@ -106,7 +106,7 @@ export default function Dashboard() {
                     </div>
                     <Text className="text-xs text-gray-600">{activity.action}</Text>
                   </div>
-                  <Text className="text-xs text-gray-500">{activity.time}</Text>
+                  <Text className="text-xs text-gray-500 self-start sm:self-center">{activity.time}</Text>
                 </div>
               ))}
             </div>
@@ -119,12 +119,12 @@ export default function Dashboard() {
             title={
               <div className="flex items-center gap-2">
                 <PlayCircleOutlined />
-                <span>Game Status</span>
+                <span className="text-sm sm:text-base">Game Status</span>
               </div>
             }
             className="h-full"
           >
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between py-2">
                 <Text className="text-sm font-medium">Game State</Text>
                 <Badge status="processing" text="Active" />
@@ -133,17 +133,17 @@ export default function Dashboard() {
                 <Text className="text-sm font-medium">Duration</Text>
                 <Text className="text-sm">45:23</Text>
               </div>
-              <div className="flex items-center justify-between py-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-2 space-y-1 sm:space-y-0">
                 <Text className="text-sm font-medium">Teams Finished</Text>
                 <div className="flex items-center gap-2">
-                  <Progress percent={25} size="small" className="w-16" />
+                  <Progress percent={25} size="small" className="w-12 sm:w-16" />
                   <Text className="text-sm">3 / 12</Text>
                 </div>
               </div>
-              <div className="flex items-center justify-between py-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-2 space-y-1 sm:space-y-0">
                 <Text className="text-sm font-medium">Average Progress</Text>
                 <div className="flex items-center gap-2">
-                  <Progress percent={62} size="small" className="w-16" />
+                  <Progress percent={62} size="small" className="w-12 sm:w-16" />
                   <Text className="text-sm">62%</Text>
                 </div>
               </div>

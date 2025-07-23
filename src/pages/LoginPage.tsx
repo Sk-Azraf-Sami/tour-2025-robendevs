@@ -30,25 +30,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-3 sm:p-4">
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-500 rounded-full mb-4">
-            <TrophyOutlined className="text-2xl text-white" />
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-indigo-500 rounded-full mb-3 sm:mb-4">
+            <TrophyOutlined className="text-lg sm:text-2xl text-white" />
           </div>
-          <Title level={1} className="!text-3xl !font-bold !text-gray-900 !mb-2">
+          <Title level={1} className="!text-2xl sm:!text-3xl !font-bold !text-gray-900 !mb-2">
             Treasure Hunt
           </Title>
-          <Text className="text-gray-600 text-lg">Management System</Text>
+          <Text className="text-gray-600 text-base sm:text-lg">Management System</Text>
         </div>
 
         {/* Login Card with Tabs */}
-        <Card className="shadow-lg rounded-xl border-0">
+        <Card className="shadow-lg rounded-xl border-0 mx-2 sm:mx-0">
           <Tabs 
             defaultActiveKey="participant" 
             centered 
             onChange={handleTabChange}
+            size="small"
             items={[
               {
                 key: 'participant',
@@ -59,10 +60,10 @@ export default function LoginPage() {
                   </span>
                 ),
                 children: (
-                  <div className="px-2 pb-4">
-                    <div className="text-center mb-6">
-                      <Title level={4} className="!mb-2">Participant Access</Title>
-                      <Text type="secondary">Join the treasure hunt adventure</Text>
+                  <div className="px-1 sm:px-2 pb-4">
+                    <div className="text-center mb-4 sm:mb-6">
+                      <Title level={4} className="!mb-2 text-base sm:text-lg">Participant Access</Title>
+                      <Text type="secondary" className="text-sm sm:text-base">Join the treasure hunt adventure</Text>
                     </div>
                     
                     {error && (
@@ -109,7 +110,7 @@ export default function LoginPage() {
                           type="primary" 
                           htmlType="submit" 
                           loading={isLoading}
-                          className="w-full h-12 text-base font-semibold bg-indigo-500 hover:bg-indigo-600 border-indigo-500 hover:border-indigo-600"
+                          className="w-full h-10 sm:h-12 text-sm sm:text-base font-semibold bg-indigo-500 hover:bg-indigo-600 border-indigo-500 hover:border-indigo-600"
                         >
                           {isLoading ? 'Joining Hunt...' : 'Join Hunt'}
                         </Button>
@@ -132,10 +133,10 @@ export default function LoginPage() {
                   </span>
                 ),
                 children: (
-                  <div className="px-2 pb-4">
-                    <div className="text-center mb-6">
-                      <Title level={4} className="!mb-2">Admin Access</Title>
-                      <Text type="secondary">Administrative access to manage treasure hunts</Text>
+                  <div className="px-1 sm:px-2 pb-4">
+                    <div className="text-center mb-4 sm:mb-6">
+                      <Title level={4} className="!mb-2 text-base sm:text-lg">Admin Access</Title>
+                      <Text type="secondary" className="text-sm sm:text-base">Administrative access to manage treasure hunts</Text>
                     </div>
                     
                     {error && (
@@ -182,7 +183,7 @@ export default function LoginPage() {
                           type="primary" 
                           htmlType="submit" 
                           loading={isLoading}
-                          className="w-full h-12 text-base font-semibold bg-indigo-500 hover:bg-indigo-600 border-indigo-500 hover:border-indigo-600"
+                          className="w-full h-10 sm:h-12 text-sm sm:text-base font-semibold bg-indigo-500 hover:bg-indigo-600 border-indigo-500 hover:border-indigo-600"
                         >
                           {isLoading ? 'Signing in...' : 'Admin Login'}
                         </Button>
@@ -201,7 +202,7 @@ export default function LoginPage() {
         </Card>
 
         {/* Forgot Password & Sign Up Links */}
-        <div className="mt-6 text-center space-y-2">
+        <div className="mt-4 sm:mt-6 text-center space-y-2 px-2 sm:px-0">
           <div>
             <Link 
               to="/forgot-password" 

@@ -63,9 +63,11 @@ const menuItems = [
 
 interface AdminSidebarProps {
   collapsed: boolean
+  isMobile?: boolean
+  onMenuClick?: () => void
 }
 
-export default function AdminSidebar({ collapsed }: AdminSidebarProps) {
+export default function AdminSidebar({ collapsed, isMobile = false, onMenuClick }: AdminSidebarProps) {
   const location = useLocation()
   const { logout } = useAuth()
 
@@ -73,36 +75,35 @@ export default function AdminSidebar({ collapsed }: AdminSidebarProps) {
     logout()
   }
 
-  return (
-    <Sider 
-      trigger={null} 
-      collapsible 
-      collapsed={collapsed}
-      className="min-h-screen"
-      theme="light"
-      width={280}
-    >
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 bg-indigo-500 rounded-lg">
-            <TrophyOutlined className="text-white text-lg" />
+  const handleMenuClick = () => {
+    if (isMobile && onMenuClick) {
+      onMenuClick()
+    }
+  }
+
+  const sidebarContent = (
+    <>
+      <div className="p-3 sm:p-4 border-b border-gray-200">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-indigo-500 rounded-lg flex-shrink-0">
+            <TrophyOutlined className="text-white text-sm sm:text-lg" />
           </div>
-          {!collapsed && (
-            <div>
-              <Title level={4} className="!mb-0 !text-gray-900">
+          {(!collapsed || isMobile) && (
+            <div className="min-w-0 flex-1">
+              <Title level={5} className="!mb-0 !text-gray-900 text-sm sm:!text-base truncate">
                 Treasure Hunt
               </Title>
-              <Text className="text-xs text-gray-500">Admin Panel</Text>
+              <Text className="text-xs text-gray-500 block">Admin Panel</Text>
             </div>
           )}
         </div>
       </div>
 
       <div className="flex flex-col h-full">
-        <div className="flex-1 py-4">
-          <div className="px-4 pb-2">
-            {!collapsed && (
-              <Text className="text-xs uppercase font-medium text-gray-500 tracking-wider">
+        <div className="flex-1 py-2 sm:py-4">
+          <div className="px-3 sm:px-4 pb-2">
+            {(!collapsed || isMobile) && (
+              <Text className="text-xs uppercase font-medium text-gray-500 tracking-wider block">
                 Management
               </Text>
             )}
@@ -112,26 +113,43 @@ export default function AdminSidebar({ collapsed }: AdminSidebarProps) {
             mode="inline"
             selectedKeys={[location.pathname]}
             className="border-r-0"
+            onClick={handleMenuClick}
+            inlineCollapsed={collapsed && !isMobile}
             items={menuItems.map(item => ({
               key: item.key,
               icon: item.icon,
-              label: <Link to={item.path}>{item.label}</Link>
+              label: <Link to={item.path} className="text-sm sm:text-base truncate">{item.label}</Link>
             }))}
           />
         </div>
 
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-gray-200 p-3 sm:p-4">
           <Button
             type="text"
             icon={<LogoutOutlined />}
             onClick={handleLogout}
-            className="w-full flex items-center justify-start"
+            className="w-full flex items-center justify-start text-sm sm:text-base hover:bg-red-50"
             danger
           >
-            {!collapsed && 'Logout'}
+            {(!collapsed || isMobile) && <span className="ml-2">Logout</span>}
           </Button>
         </div>
       </div>
+    </>
+  )
+
+  return (
+    <Sider 
+      trigger={null} 
+      collapsible 
+      collapsed={collapsed && !isMobile}
+      className="min-h-screen"
+      theme="light"
+      width={280}
+      collapsedWidth={isMobile ? 0 : 80}
+      breakpoint="lg"
+    >
+      {sidebarContent}
     </Sider>
   )
 }
