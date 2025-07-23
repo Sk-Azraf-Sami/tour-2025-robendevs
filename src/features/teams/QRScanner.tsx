@@ -11,12 +11,20 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   const [isScanning, setIsScanning] = useState(true)
   const [error, setError] = useState('')
 
-  // Mock QR scanner - replace with actual QR scanner library
-  const handleMockScan = () => {
+  // DUMMY QR SCANNER - Replace with actual QR scanner library integration
+  // TODO: Integrate with react-qr-reader or similar library for real QR scanning
+  const handleMockScan = (code: string) => {
     setTimeout(() => {
-      onScan('checkpoint-1-code')
+      onScan(code)
     }, 1000)
   }
+
+  // Mock QR codes for different checkpoint scenarios
+  const mockQRCodes = [
+    { label: 'Valid Checkpoint Code', code: 'VALID-CODE-123' },
+    { label: 'Invalid Code (for testing)', code: 'INVALID-CODE-456' },
+    { label: 'Checkpoint CP3 Code', code: 'CP3-QR-CODE' },
+  ]
 
   return (
     <Modal
@@ -75,14 +83,20 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             Position the QR code within the frame to scan
           </p>
           
-          {/* Mock scan button for development */}
-          <Button 
-            type="dashed" 
-            onClick={handleMockScan}
-            className="w-full"
-          >
-            Mock Scan (Development)
-          </Button>
+          {/* Mock scan buttons for development */}
+          <div className="space-y-2">
+            {mockQRCodes.map((mock, index) => (
+              <Button 
+                key={index}
+                type="dashed" 
+                onClick={() => handleMockScan(mock.code)}
+                className="w-full text-xs"
+                size="small"
+              >
+                {mock.label}
+              </Button>
+            ))}
+          </div>
         </div>
 
         <div className="flex gap-2">

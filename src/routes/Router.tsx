@@ -10,6 +10,8 @@ import Settings from '../features/admin/Settings'
 import Monitor from '../features/admin/Monitor'
 import Launch from '../features/admin/Launch'
 import ProtectedRoute from '../components/ProtectedRoute'
+import TeamGameFlow from '../features/teams/TeamGameFlow'
+// Legacy components (keeping for reference)
 import TeamDashboard from '../features/teams/Dashboard'
 import QRScanPage from '../features/teams/QRScanPage'
 import MCQPage from '../features/teams/MCQPage'
@@ -34,19 +36,24 @@ const router = createBrowserRouter([
     children: [
       {
         path: 'dashboard',
+        element: <TeamGameFlow />,
+      },
+      // Legacy routes (keeping for backward compatibility during transition)
+      {
+        path: 'legacy/dashboard', 
         element: <TeamDashboard />,
       },
       {
-        path: 'scan',
+        path: 'legacy/scan',
         element: <QRScanPage />,
       },
       {
-        path: 'mcq',
+        path: 'legacy/mcq',
         element: <MCQPage />,
       },
       {
-        path: 'puzzle',
-        element: <PuzzlePage />,
+        path: 'legacy/puzzle',
+        element: <PuzzlePage onProceedToScan={() => {}} />,
       },
     ],
   },
