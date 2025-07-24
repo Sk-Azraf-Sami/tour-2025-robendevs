@@ -86,6 +86,7 @@ This document describes the complete database schema implementation for the trea
   allow_retries: boolean,       // Whether retries are allowed
   email_notifications: boolean, // Email notifications setting
   push_notifications: boolean   // Push notifications setting
+  round_time: number            // time per round
 }
 ```
 
