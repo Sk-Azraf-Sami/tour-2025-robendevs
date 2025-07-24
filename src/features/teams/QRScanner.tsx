@@ -16,6 +16,8 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   const [error, setError] = useState('')
   const [manualCode, setManualCode] = useState('')
   const [isValidating, setIsValidating] = useState(false)
+  const [scannedRawCode, setScannedRawCode] = useState('')
+  const [showScannedResult, setShowScannedResult] = useState(false)
   const scannerRef = useRef<Html5QrcodeScanner | null>(null)
 
   // Cleanup scanner on unmount
@@ -71,9 +73,15 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             const validCode = extractValidCode(decodedText)
             console.log("QR Code scanned:", decodedText, "-> Extracted:", validCode)
             
-            // Stop scanning and pass the code
+            // Stop scanning
             stopScan()
-            onScan(validCode)
+            
+            // Switch to manual entry mode and populate with extracted code
+            setScannedRawCode(decodedText)
+            setManualCode(validCode)
+            setScanMethod('manual')
+            setShowScannedResult(true)
+            setError('')
           },
           (error: string) => {
             // Only log errors, don't show them to user (too noisy)
@@ -100,12 +108,21 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
     setIsScanning(false)
   }
 
-  // DUMMY QR SCANNER - Replace with actual QR scanner library integration
-  // TODO: Integrate with react-qr-reader or similar library for real QR scanning
+  // MOCK QR SCANNER - For development testing
   const handleMockScan = (code: string) => {
-    setTimeout(() => {
-      onScan(code)
-    }, 1000)
+    // Simulate the same behavior as real QR scanning
+    const validCode = extractValidCode(code)
+    console.log("Mock QR Code scanned:", code, "-> Extracted:", validCode)
+    
+    // Stop any ongoing scanning
+    stopScan()
+    
+    // Switch to manual entry mode and populate with extracted code
+    setScannedRawCode(code)
+    setManualCode(validCode)
+    setScanMethod('manual')
+    setShowScannedResult(true)
+    setError('')
   }
 
   const handleManualSubmit = async () => {
@@ -277,9 +294,38 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             <div className="text-center">
               <EditOutlined className="text-4xl text-blue-500 mb-3" />
               <Text className="block text-gray-600">
-                Enter the checkpoint code found at your location
+                {showScannedResult ? "QR Code Scanned Successfully!" : "Enter the checkpoint code found at your location"}
               </Text>
             </div>
+
+            {/* Show scanned result info */}
+            {showScannedResult && (
+              <Alert
+                message="✅ QR Code Detected"
+                description={
+                  <div className="space-y-2">
+                    <div>
+                      <Text strong className="text-sm">Raw QR Data:</Text>
+                      <div className="font-mono text-xs bg-gray-100 p-2 rounded mt-1 break-all">
+                        {scannedRawCode}
+                      </div>
+                    </div>
+                    <div>
+                      <Text strong className="text-sm">Extracted Code:</Text>
+                      <div className="font-mono text-sm bg-green-100 p-2 rounded mt-1 text-green-800">
+                        {manualCode}
+                      </div>
+                    </div>
+                    <Text className="text-xs text-gray-600">
+                      ℹ️ The code above was automatically extracted from your QR scan. You can verify it's correct and submit, or edit it if needed.
+                    </Text>
+                  </div>
+                }
+                type="success"
+                showIcon
+                className="text-sm"
+              />
+            )}
             
             <div className="space-y-3">
               <div>
@@ -293,7 +339,10 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                   onPressEnter={handleManualSubmit}
                 />
                 <Text className="text-xs text-gray-500 mt-1 block">
-                  Enter the exact code shown at your checkpoint location
+                  {showScannedResult 
+                    ? "Code automatically filled from QR scan. You can edit if needed."
+                    : "Enter the exact code shown at your checkpoint location"
+                  }
                 </Text>
               </div>
               
@@ -306,17 +355,37 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                 loading={isValidating}
                 disabled={!manualCode.trim()}
               >
-                {isValidating ? 'Validating Code...' : 'Verify Code'}
+                {isValidating ? 'Validating Code...' : (showScannedResult ? 'Submit Scanned Code' : 'Verify Code')}
               </Button>
+
+              {/* Option to scan again */}
+              {showScannedResult && (
+                <Button 
+                  type="default" 
+                  size="large" 
+                  onClick={() => {
+                    setScanMethod('camera')
+                    setShowScannedResult(false)
+                    setScannedRawCode('')
+                    setManualCode('')
+                  }} 
+                  className="w-full"
+                  icon={<CameraOutlined />}
+                >
+                  Scan Another QR Code
+                </Button>
+              )}
             </div>
 
-            <Alert
-              message="💡 Finding the Code"
-              description="At each checkpoint location, you'll find both a QR code AND a text code displayed nearby. If you can't scan the QR code, you can manually enter the text code instead. Both will work the same way!"
-              type="info"
-              showIcon
-              className="text-sm"
-            />
+            {!showScannedResult && (
+              <Alert
+                message="💡 Finding the Code"
+                description="At each checkpoint location, you'll find both a QR code AND a text code displayed nearby. If you can't scan the QR code, you can manually enter the text code instead. Both will work the same way!"
+                type="info"
+                showIcon
+                className="text-sm"
+              />
+            )}
           </div>
         )}
 
