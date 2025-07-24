@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userObj: User = {
           id: admin.id,
           email: admin.username,
-          name: 'Admin',
+          name: admin.username,
           role: 'admin'
         }
         setUser(userObj)
