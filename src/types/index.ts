@@ -25,6 +25,7 @@ export interface Team {
   totalPoints: number;
   legs: TeamLeg[];
   isActive: boolean;
+  gameStartTime?: number;
   createdAt?: string; 
 }
 
@@ -34,6 +35,7 @@ export interface TeamLeg {
   endTime?: number;
   mcqPoints: number;
   timeBonus: number;
+  mcqAnswerOptionId?: string;
 }
 
 export interface MCQ {
@@ -43,15 +45,18 @@ export interface MCQ {
 }
 
 export interface MCQOption {
+  id?: string;
   text: string;
   value: number;
 }
 
 export interface Puzzle {
   id: string;
+  checkpoint: string;
   text: string;
   imageURL?: string;
   code: string;
+  isStarting?: boolean;
 }
 
 export interface Admin {

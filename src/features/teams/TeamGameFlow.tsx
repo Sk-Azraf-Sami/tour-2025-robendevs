@@ -45,8 +45,8 @@ import {
 import QRScanner from './QRScanner'
 import MCQQuestion from './MCQQuestion'
 import PuzzleView from './PuzzleView'
-// import TeamRoadmapStatus from './TeamRoadmapStatus'
-// import { GameService } from '../../services/GameService'
+import { GameService } from '../../services/GameService'
+import { useAuth } from '../../contexts/auth'
 
 const { Title, Text } = Typography
 
@@ -82,37 +82,18 @@ interface TeamGameState {
 }
 
 export default function TeamGameFlow() {
-  // Remove unused user for now
-  // const { user } = useAuth()
+  const { user } = useAuth()
   const [gameState, setGameState] = useState<TeamGameState>({
     currentStage: 'loading',
     currentCheckpointIndex: 0,
-    totalCheckpoints: 8, // TODO: Get from backend settings
+    totalCheckpoints: 0,
     totalPoints: 0,
     elapsedTime: 0,
     isGameActive: true,
-    roadmap: [], // TODO: Fetch from backend team data
+    roadmap: [],
   })
   const [showScanner, setShowScanner] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-
-  // DUMMY DATA - Replace with actual backend calls
-  const mockMCQ = {
-    id: 'mcq-1',
-    text: 'What year was this landmark established?',
-    options: [
-      { id: 'a', text: '1885', points: 5 },
-      { id: 'b', text: '1892', points: 10 },
-      { id: 'c', text: '1901', points: 0 },
-      { id: 'd', text: '1875', points: 2 },
-    ]
-  }
-  const mockPuzzle = {
-    id: 'puzzle-1',
-    text: 'Where shadows dance with morning light, and ancient wisdom meets the sight. Look for the guardian made of stone, where knowledge seekers are never alone.',
-    imageURL: 'https://via.placeholder.com/400x300?text=Library+Entrance',
-    hint: 'This place is filled with books and learning. Look for the stone statue at the entrance.'
-  }
 
   // Timer effect for elapsed time
   useEffect(() => {
@@ -130,26 +111,35 @@ export default function TeamGameFlow() {
 
   // Initialize game state on mount
   const initializeGameState = useCallback(async () => {
+    if (!user?.id) {
+      message.error('User not authenticated')
+      return
+    }
+
     try {
-      // TODO: Replace with actual backend calls
-      // const teamData = await GameService.getTeamProgress(user.id)
-      // const currentPuzzle = await GameService.getNextPuzzle(user.id)
+      // Get team progress from backend
+      const teamProgress = await GameService.getTeamProgress(user.id)
       
-      // For now, use mock data
-      const mockRoadmap = ['cp1', 'cp3', 'cp5', 'cp2', 'cp7', 'cp4', 'cp6', 'cp8']
+      if (!teamProgress) {
+        message.error('Failed to load team progress')
+        return
+      }
+      
       setGameState(prev => ({
         ...prev,
         currentStage: 'scan',
-        roadmap: mockRoadmap,
-        currentCheckpointIndex: 2, // Simulate being on checkpoint 3
-        totalPoints: 45, // Simulate some points earned
-        elapsedTime: 1800, // Simulate 30 minutes elapsed
+        roadmap: teamProgress.roadmap,
+        currentCheckpointIndex: teamProgress.currentIndex,
+        totalCheckpoints: teamProgress.roadmap.length,
+        totalPoints: teamProgress.totalPoints,
+        elapsedTime: teamProgress.elapsedTime,
+        isGameActive: teamProgress.isGameActive
       }))
     } catch (error) {
       console.error('Failed to initialize game state:', error)
       message.error('Failed to load game state. Please try again.')
     }
-  }, [])
+  }, [user?.id])
 
   useEffect(() => {
     initializeGameState()
@@ -163,35 +153,40 @@ export default function TeamGameFlow() {
   }
 
   const handleQRScanned = async (qrCode: string) => {
+    if (!user?.id) {
+      message.error('User not authenticated')
+      return
+    }
+
     setIsProcessing(true)
     setShowScanner(false)
     
     try {
-      // TODO: Replace with actual backend validation
-      // This should call: GameService.validateQRCode(teamId, qrCode)
-      // Backend logic:
-      // 1. Get team's roadmap and currentIndex
-      // 2. Check if qrCode matches the checkpoint at roadmap[currentIndex] 
-      // 3. Return success/failure with appropriate message
+      // Validate QR code with backend
+      const result = await GameService.validateQRCode(user.id, qrCode)
       
-      // MOCK VALIDATION LOGIC (replace with backend call)
-      const expectedCheckpointId = gameState.roadmap[gameState.currentCheckpointIndex]
-      const validCodes = [`${expectedCheckpointId}-QR-CODE`, 'VALID-CODE-123'] // Mock valid codes
-      
-      if (validCodes.includes(qrCode.toUpperCase())) {
+      if (result.success && result.mcq) {
         message.success('QR Code verified! Proceeding to question.')
         
-        // TODO: Backend should return the MCQ for this checkpoint
-        // const mcq = await GameService.getMCQForCheckpoint(expectedCheckpointId)
+        // Convert backend MCQ format to frontend format
+        const formattedMCQ: MCQData = {
+          id: result.mcq.id,
+          text: result.mcq.text,
+          options: result.mcq.options.map((opt, index) => ({
+            id: opt.id || `option_${index}`,
+            text: opt.text,
+            points: opt.value || 0
+          }))
+        }
+        
         setGameState(prev => ({
           ...prev,
           currentStage: 'mcq',
-          currentMCQ: mockMCQ, // Replace with actual MCQ from backend
+          currentMCQ: formattedMCQ,
           scannedCode: qrCode
         }))
       } else {
-        // This enforces the roadmap system - only correct checkpoint QR codes work
-        message.error(`Invalid QR code for your current checkpoint. You need to find checkpoint ${expectedCheckpointId}.`)
+        message.error(result.message)
       }
     } catch (error) {
       console.error('QR validation failed:', error)
@@ -202,31 +197,53 @@ export default function TeamGameFlow() {
   }
 
   const handleMCQSubmit = async (answer: { optionId: string; points: number }) => {
+    if (!user?.id || !gameState.scannedCode) {
+      message.error('Missing required data for submission')
+      return
+    }
+
     setIsProcessing(true)
     
     try {
-      // TODO: Replace with actual backend submission
-      // This should call: GameService.submitMCQAnswer(teamId, scannedCode, answer.optionId)
-      // Backend logic:
-      // 1. Validate that the MCQ answer belongs to the current checkpoint
-      // 2. Calculate points: MCQ points + time bonus/penalty
-      // 3. Save leg progress with: checkpointId, startTime, endTime, mcqPoints, timeBonus
-      // 4. Update team: increment currentIndex, add total points/time
-      // 5. Return puzzle for NEXT checkpoint (roadmap[currentIndex + 1])
+      // Submit MCQ answer to backend
+      const result = await GameService.submitMCQAnswer(user.id, gameState.scannedCode, answer.optionId)
       
-      // MOCK SUBMISSION LOGIC (replace with backend call)
-      message.success(`Correct! You earned ${answer.points} points.`)
-      
-      // This simulates the backend incrementing currentIndex and returning next puzzle
-      const nextCheckpointIndex = gameState.currentCheckpointIndex + 1
-      
-      setGameState(prev => ({
-        ...prev,
-        currentStage: 'puzzle',
-        totalPoints: prev.totalPoints + answer.points,
-        currentPuzzle: mockPuzzle, // TODO: Replace with puzzle for roadmap[nextCheckpointIndex]
-        currentCheckpointIndex: nextCheckpointIndex // This happens in backend, but simulated here
-      }))
+      if (result.success) {
+        message.success(`Correct! You earned ${result.pointsEarned} points.`)
+        
+        // Check if game is complete
+        if (result.isGameComplete) {
+          setGameState(prev => ({
+            ...prev,
+            currentStage: 'complete',
+            totalPoints: prev.totalPoints + result.pointsEarned,
+            isGameActive: false
+          }))
+          message.success('Congratulations! You have completed the treasure hunt!')
+          return
+        }
+        
+        // Convert backend puzzle format to frontend format if available
+        let formattedPuzzle: PuzzleData | undefined
+        if (result.puzzle) {
+          formattedPuzzle = {
+            id: result.puzzle.id,
+            text: result.puzzle.text,
+            imageURL: result.puzzle.imageURL,
+            hint: result.puzzle.text // Use text as hint for now
+          }
+        }
+        
+        setGameState(prev => ({
+          ...prev,
+          currentStage: 'puzzle',
+          totalPoints: prev.totalPoints + result.pointsEarned,
+          currentPuzzle: formattedPuzzle,
+          currentCheckpointIndex: prev.currentCheckpointIndex + 1
+        }))
+      } else {
+        message.error(result.message)
+      }
     } catch (error) {
       console.error('MCQ submission failed:', error)
       message.error('Failed to submit answer. Please try again.')
