@@ -52,6 +52,8 @@ export interface Puzzle {
   text: string;
   imageURL?: string;
   code: string;
+  checkpoint: string
+  isStarting: boolean
 }
 
 export interface Admin {
