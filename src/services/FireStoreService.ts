@@ -9,133 +9,163 @@ import {
   onSnapshot,
   query,
   orderBy,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
-import type { GlobalSettings, Team, MCQ, Puzzle, Admin } from '../types';
+} from "firebase/firestore";
+import { db } from "../config/firebase";
+import type { GlobalSettings, Team, MCQ, Puzzle, Admin } from "../types";
 
 export class FirestoreService {
   // Global Settings
   static async getGlobalSettings(): Promise<GlobalSettings | null> {
-    const docRef = doc(db, 'settings', 'global');
+    const docRef = doc(db, "settings", "global");
     const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as GlobalSettings : null;
+    return docSnap.exists()
+      ? ({ id: docSnap.id, ...docSnap.data() } as GlobalSettings)
+      : null;
   }
 
-  static async updateGlobalSettings(settings: Partial<GlobalSettings>): Promise<void> {
-    const docRef = doc(db, 'settings', 'global');
+  static async updateGlobalSettings(
+    settings: Partial<GlobalSettings>
+  ): Promise<void> {
+    const docRef = doc(db, "settings", "global");
     await setDoc(docRef, settings, { merge: true });
   }
 
   // Teams
   static async getAllTeams(): Promise<Team[]> {
-    const querySnapshot = await getDocs(collection(db, 'teams'));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
+    const querySnapshot = await getDocs(collection(db, "teams"));
+    return querySnapshot.docs.map(
+      (doc) => ({ id: doc.id, ...doc.data() }) as Team
+    );
   }
 
   static async getTeam(teamId: string): Promise<Team | null> {
-    const docRef = doc(db, 'teams', teamId);
+    const docRef = doc(db, "teams", teamId);
     const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as Team : null;
+    return docSnap.exists()
+      ? ({ id: docSnap.id, ...docSnap.data() } as Team)
+      : null;
   }
 
-  static async createTeam(team: Omit<Team, 'id'>): Promise<string> {
-    const docRef = doc(collection(db, 'teams'));
+  static async createTeam(team: Omit<Team, "id">): Promise<string> {
+    const docRef = doc(collection(db, "teams"));
     await setDoc(docRef, team);
     return docRef.id;
   }
 
-  static async updateTeam(teamId: string, updates: Partial<Team>): Promise<void> {
-    const docRef = doc(db, 'teams', teamId);
+  static async updateTeam(
+    teamId: string,
+    updates: Partial<Team>
+  ): Promise<void> {
+    const docRef = doc(db, "teams", teamId);
     await updateDoc(docRef, updates);
   }
 
   static async deleteTeam(teamId: string): Promise<void> {
-    const docRef = doc(db, 'teams', teamId);
+    const docRef = doc(db, "teams", teamId);
     await deleteDoc(docRef);
   }
 
   // MCQs
   static async getAllMCQs(): Promise<MCQ[]> {
-    const querySnapshot = await getDocs(collection(db, 'mcqs'));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MCQ));
+    const querySnapshot = await getDocs(collection(db, "mcqs"));
+    return querySnapshot.docs.map(
+      (doc) => ({ id: doc.id, ...doc.data() }) as MCQ
+    );
   }
 
   static async getMCQ(mcqId: string): Promise<MCQ | null> {
-    const docRef = doc(db, 'mcqs', mcqId);
+    const docRef = doc(db, "mcqs", mcqId);
     const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as MCQ : null;
+    return docSnap.exists()
+      ? ({ id: docSnap.id, ...docSnap.data() } as MCQ)
+      : null;
   }
 
-  static async createMCQ(mcq: Omit<MCQ, 'id'>): Promise<string> {
-    const docRef = doc(collection(db, 'mcqs'));
+  static async createMCQ(mcq: Omit<MCQ, "id">): Promise<string> {
+    const docRef = doc(collection(db, "mcqs"));
     await setDoc(docRef, mcq);
     return docRef.id;
   }
 
   static async updateMCQ(mcqId: string, updates: Partial<MCQ>): Promise<void> {
-    const docRef = doc(db, 'mcqs', mcqId);
+    const docRef = doc(db, "mcqs", mcqId);
     await updateDoc(docRef, updates);
   }
 
   static async deleteMCQ(mcqId: string): Promise<void> {
-    const docRef = doc(db, 'mcqs', mcqId);
+    const docRef = doc(db, "mcqs", mcqId);
     await deleteDoc(docRef);
   }
 
   // Puzzles
   static async getAllPuzzles(): Promise<Puzzle[]> {
-    const querySnapshot = await getDocs(collection(db, 'puzzles'));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Puzzle));
+    const querySnapshot = await getDocs(collection(db, "puzzles"));
+    return querySnapshot.docs.map(
+      (doc) => ({ id: doc.id, ...doc.data() }) as Puzzle
+    );
   }
 
   static async getPuzzle(puzzleId: string): Promise<Puzzle | null> {
-    const docRef = doc(db, 'puzzles', puzzleId);
+    const docRef = doc(db, "puzzles", puzzleId);
     const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as Puzzle : null;
+    return docSnap.exists()
+      ? ({ id: docSnap.id, ...docSnap.data() } as Puzzle)
+      : null;
   }
 
-  static async createPuzzle(puzzle: Omit<Puzzle, 'id'>): Promise<string> {
-    const docRef = doc(collection(db, 'puzzles'));
+  static async createPuzzle(puzzle: Omit<Puzzle, "id">): Promise<string> {
+    const docRef = doc(collection(db, "puzzles"));
     await setDoc(docRef, puzzle);
     return docRef.id;
   }
 
-  static async updatePuzzle(puzzleId: string, updates: Partial<Puzzle>): Promise<void> {
-    const docRef = doc(db, 'puzzles', puzzleId);
+  static async updatePuzzle(
+    puzzleId: string,
+    updates: Partial<Puzzle>
+  ): Promise<void> {
+    const docRef = doc(db, "puzzles", puzzleId);
     await updateDoc(docRef, updates);
   }
 
   static async deletePuzzle(puzzleId: string): Promise<void> {
-    const docRef = doc(db, 'puzzles', puzzleId);
+    const docRef = doc(db, "puzzles", puzzleId);
     await deleteDoc(docRef);
   }
 
   // Admins
-  static async getAdmin(adminId: string): Promise<Admin | null> {
-    const docRef = doc(db, 'admins', adminId);
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as Admin : null;
+  static async getAllAdmins(): Promise<Admin[]> {
+    const querySnapshot = await getDocs(collection(db, "admin"));
+    return querySnapshot.docs.map(
+      (doc) => ({ id: doc.id, ...doc.data() }) as Admin
+    );
   }
 
-  static async createAdmin(admin: Omit<Admin, 'id'>): Promise<string> {
-    const docRef = doc(collection(db, 'admins'));
+  static async createAdmin(admin: Omit<Admin, "id">): Promise<string> {
+    const docRef = doc(collection(db, "admins"));
     await setDoc(docRef, admin);
     return docRef.id;
   }
 
   // Real-time listeners
   static subscribeToTeams(callback: (teams: Team[]) => void): () => void {
-    const q = query(collection(db, 'teams'), orderBy('totalPoints', 'desc'));
+    const q = query(collection(db, "teams"), orderBy("totalPoints", "desc"));
     return onSnapshot(q, (querySnapshot) => {
-      const teams = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
+      const teams = querySnapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() }) as Team
+      );
       callback(teams);
     });
   }
 
-  static subscribeToTeam(teamId: string, callback: (team: Team | null) => void): () => void {
-    const docRef = doc(db, 'teams', teamId);
+  static subscribeToTeam(
+    teamId: string,
+    callback: (team: Team | null) => void
+  ): () => void {
+    const docRef = doc(db, "teams", teamId);
     return onSnapshot(docRef, (docSnap) => {
-      const team = docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as Team : null;
+      const team = docSnap.exists()
+        ? ({ id: docSnap.id, ...docSnap.data() } as Team)
+        : null;
       callback(team);
     });
   }
