@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { Modal, Button, Alert, Spin, Input, Radio, Typography, Divider } from 'antd'
+import { useState, useRef, useEffect } from 'react'
+import { Modal, Button, Alert, Input, Radio, Typography, Divider } from 'antd'
 import { CloseOutlined, CameraOutlined, EditOutlined, CheckOutlined } from '@ant-design/icons'
+import { Html5QrcodeScanner } from "html5-qrcode"
 
 const { Text } = Typography
 
@@ -11,10 +12,93 @@ interface QRScannerProps {
 
 export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   const [scanMethod, setScanMethod] = useState<'camera' | 'manual'>('camera')
-  const [isScanning, setIsScanning] = useState(true)
+  const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState('')
   const [manualCode, setManualCode] = useState('')
   const [isValidating, setIsValidating] = useState(false)
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null)
+
+  // Cleanup scanner on unmount
+  useEffect(() => {
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch((error: unknown) => {
+          console.error("Failed to clear scanner:", error)
+        })
+      }
+    }
+  }, [])
+
+  // Function to extract valid code using regex
+  const extractValidCode = (scannedText: string): string => {
+    // Remove any whitespace and convert to uppercase
+    const cleanText = scannedText.trim().toUpperCase()
+    
+    // Try to match various patterns that might be in QR codes
+    // Pattern 1: PUZZLE_XXXXXX format
+    const puzzleMatch = cleanText.match(/PUZZLE_\d{6}/)
+    if (puzzleMatch) return puzzleMatch[0]
+    
+    // Pattern 2: CHECKPOINT_XXX format  
+    const checkpointMatch = cleanText.match(/CHECKPOINT_\w+/)
+    if (checkpointMatch) return checkpointMatch[0]
+    
+    // Pattern 3: Any alphanumeric code with underscores (common checkpoint format)
+    const codeMatch = cleanText.match(/[A-Z0-9_]{6,20}/)
+    if (codeMatch) return codeMatch[0]
+    
+    // If no pattern matches, return the cleaned text as is
+    return cleanText
+  }
+
+  const startScan = () => {
+    if (!isScanning && document.getElementById("qr-reader")) {
+      try {
+        scannerRef.current = new Html5QrcodeScanner(
+          "qr-reader",
+          { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+            disableFlip: false
+          },
+          false
+        )
+        
+        scannerRef.current.render(
+          (decodedText: string) => {
+            // Extract valid code from scanned text
+            const validCode = extractValidCode(decodedText)
+            console.log("QR Code scanned:", decodedText, "-> Extracted:", validCode)
+            
+            // Stop scanning and pass the code
+            stopScan()
+            onScan(validCode)
+          },
+          (error: string) => {
+            // Only log errors, don't show them to user (too noisy)
+            console.debug("QR scan error:", error)
+          }
+        )
+        setIsScanning(true)
+        setError('')
+      } catch (err) {
+        console.error("Failed to start QR scanner:", err)
+        setError("Failed to start camera. Please check camera permissions.")
+        setIsScanning(false)
+      }
+    }
+  }
+
+  const stopScan = () => {
+    if (scannerRef.current) {
+      scannerRef.current.clear().catch((error: unknown) => {
+        console.error("Failed to clear scanner:", error)
+      })
+      scannerRef.current = null
+    }
+    setIsScanning(false)
+  }
 
   // DUMMY QR SCANNER - Replace with actual QR scanner library integration
   // TODO: Integrate with react-qr-reader or similar library for real QR scanning
@@ -34,9 +118,13 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
     setError('')
     
     try {
+      // Extract valid code from manual input
+      const validCode = extractValidCode(manualCode)
+      console.log("Manual code entered:", manualCode, "-> Extracted:", validCode)
+      
       // Simulate validation delay and pass the code to the parent
       setTimeout(() => {
-        onScan(manualCode.trim())
+        onScan(validCode)
         setIsValidating(false)
       }, 500)
     } catch {
@@ -54,10 +142,15 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
     { label: '� Invalid: Wrong Checkpoint Code', code: 'INVALID_CODE_456' },
   ]
 
+  const handleClose = () => {
+    stopScan()
+    onClose()
+  }
+
   return (
     <Modal
       open={true}
-      onCancel={onClose}
+      onCancel={handleClose}
       footer={null}
       title="Scan or Enter Checkpoint Code"
       width="100%"
@@ -101,40 +194,62 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
         {/* Camera Scanning Section */}
         {scanMethod === 'camera' && (
           <div className="space-y-4">
-            <div className="relative bg-gray-900 rounded-lg overflow-hidden" style={{ aspectRatio: '1' }}>
-              {isScanning ? (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-white space-y-4">
+            {/* QR Reader Container */}
+            <div className="relative bg-gray-100 rounded-lg overflow-hidden">
+              <div 
+                id="qr-reader" 
+                style={{ 
+                  width: "100%", 
+                  minHeight: "320px", 
+                  borderRadius: 12, 
+                  overflow: 'hidden' 
+                }}
+              />
+              
+              {!isScanning && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 rounded-lg">
+                  <div className="text-white text-center space-y-4">
                     <CameraOutlined className="text-6xl" />
                     <div>
-                      <Spin size="large" />
-                      <p className="mt-2">Scanning for QR code...</p>
+                      <p className="text-lg font-medium">Ready to Scan</p>
+                      <p className="text-sm opacity-75">Tap "Start Camera" to begin scanning</p>
                     </div>
-                  </div>
-                  
-                  {/* Scanner overlay */}
-                  <div className="absolute inset-8 border-2 border-white rounded-lg opacity-50">
-                    <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-blue-400"></div>
-                    <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-blue-400"></div>
-                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-blue-400"></div>
-                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-blue-400"></div>
-                  </div>
-                </div>
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-white">
-                  <div className="text-center">
-                    <p>Camera not available</p>
-                    <Button onClick={() => setIsScanning(true)} className="mt-2">
-                      Retry
-                    </Button>
                   </div>
                 </div>
               )}
             </div>
 
+            {/* Scan Controls */}
+            <div className="flex gap-2">
+              {!isScanning ? (
+                <Button
+                  type="primary"
+                  size="large"
+                  onClick={startScan}
+                  className="flex-1"
+                  icon={<CameraOutlined />}
+                >
+                  Start Camera
+                </Button>
+              ) : (
+                <Button
+                  type="default"
+                  size="large"
+                  onClick={stopScan}
+                  className="flex-1"
+                  danger
+                >
+                  Stop Scanning
+                </Button>
+              )}
+            </div>
+
             <div className="text-center space-y-2">
               <Text className="text-gray-600 text-sm block">
-                Position the QR code within the frame to scan
+                {isScanning 
+                  ? "Position the QR code within the camera frame to scan automatically" 
+                  : "Make sure to allow camera permissions when prompted"
+                }
               </Text>
               
               {/* Mock scan buttons for development */}
@@ -210,7 +325,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
           <Button 
             type="default" 
             icon={<CloseOutlined />}
-            onClick={onClose}
+            onClick={handleClose}
             className="flex-1"
           >
             Cancel
