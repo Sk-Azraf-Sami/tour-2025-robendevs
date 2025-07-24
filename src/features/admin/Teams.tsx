@@ -38,6 +38,7 @@ interface Team {
   status: 'active' | 'completed' | 'inactive'
   currentCheckpoint: number
   createdAt: string
+  roadmap?: string[]
 }
 
 interface FormValues {
@@ -71,6 +72,7 @@ export default function Teams() {
           status: t.isActive ? (t.currentIndex >= (t.roadmap?.length || 0) ? 'completed' : 'active') : 'inactive',
           currentCheckpoint: (t.currentIndex || 0) + 1,
           createdAt: t.createdAt || '',
+          roadmap: t.roadmap,
         }))
         setTeams(mappedTeams)
       } catch (err) {
@@ -93,11 +95,14 @@ export default function Teams() {
         })
         message.success('Team updated successfully')
       } else {
+        // Fetch all puzzles to set checkpoints
+        const puzzles = await FirestoreService.getAllPuzzles()
+        const puzzleIds = puzzles.map(p => p.id)
         // Create new Firestore team
         const newTeam: Omit<FirestoreTeam, 'id'> = {
           username: values.username,
           passwordHash: values.password,
-          roadmap: [],
+          roadmap: puzzleIds, // Each puzzle is a checkpoint
           currentIndex: 0,
           totalTime: 0,
           totalPoints: 0,
@@ -119,6 +124,7 @@ export default function Teams() {
         status: t.isActive ? (t.currentIndex >= (t.roadmap?.length || 0) ? 'completed' : 'active') : 'inactive',
         currentCheckpoint: (t.currentIndex || 0) + 1,
         createdAt: t.createdAt || '',
+        roadmap: t.roadmap, 
       }))
       setTeams(mappedTeams)
       setIsModalOpen(false)
@@ -209,18 +215,20 @@ export default function Teams() {
       )
     },
     {
-      title: 'Progress',
-      key: 'progress',
-      render: (_: unknown, record: Team) => (
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <Text className="text-xs sm:text-sm">Checkpoint {record.currentCheckpoint}/{record.progress === 100 ? record.currentCheckpoint : (record.progress > 0 ? Math.round(record.currentCheckpoint / (record.progress / 100)) : 8)}</Text>
-            <Text className="text-xs sm:text-sm font-medium">{record.progress}%</Text>
-          </div>
-          <Progress percent={record.progress} size="small" />
-        </div>
-      )
-    },
+  title: 'Progress',
+  key: 'progress',
+  render: (_: unknown, record: Team) => (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <Text className="text-xs sm:text-sm">
+          Checkpoint {record.currentCheckpoint}/{record.roadmap?.length || 0}
+        </Text>
+        <Text className="text-xs sm:text-sm font-medium">{record.progress}%</Text>
+      </div>
+      <Progress percent={record.progress} size="small" />
+    </div>
+  )
+},
     {
       title: 'Status',
       dataIndex: 'status',
