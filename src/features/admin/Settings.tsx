@@ -23,6 +23,7 @@ interface SettingsFormData {
   maxTeams: number;
   maxParticipants: number;
   gameDuration: number;
+  roundTime: number; // Time limit per checkpoint in minutes
   enableHints: boolean;
   enableTimer: boolean;
   allowRetries: boolean;
@@ -46,6 +47,7 @@ export default function Settings() {
             maxTeams: settings.max_teams,
             maxParticipants: settings.max_participants,
             gameDuration: settings.game_duration,
+            roundTime: settings.round_time || 5, // Default to 5 minutes if not set
             enableHints: settings.enable_hints ?? true,
             enableTimer: settings.enable_timer ?? true,
             allowRetries: settings.allow_retries ?? false,
@@ -53,7 +55,7 @@ export default function Settings() {
             pushNotifications: settings.push_notifications ?? true,
           });
         }
-      } catch (err) {
+      } catch {
         message.error("Failed to load settings");
       }
     }
@@ -70,6 +72,7 @@ export default function Settings() {
         max_teams: values.maxTeams,
         max_participants: values.maxParticipants,
         game_duration: values.gameDuration,
+        round_time: values.roundTime,
         // enable_hints: values.enableHints,
         // enable_timer: values.enableTimer,
         // allow_retries: values.allowRetries,
@@ -77,9 +80,10 @@ export default function Settings() {
         // push_notifications: values.pushNotifications,
       });
       message.success("Settings saved to Firestore!");
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       message.error(
-        `Failed to save settings: ${err.message || "Unknown error"}`
+        `Failed to save settings: ${errorMessage}`
       );
     }
   };
@@ -161,20 +165,35 @@ export default function Settings() {
                 </Col>
                 <Col xs={24} sm={12}>
                   <Form.Item
-                    label="Game Duration (minutes)"
-                    name="gameDuration"
+                    label="Round Time (minutes per checkpoint)"
+                    name="roundTime"
+                    rules={[
+                      { required: true, message: "Please enter round time" },
+                    ]}
+                    help="Time limit per checkpoint. Teams get bonus for finishing early, penalty for exceeding this time."
                   >
-                    <InputNumber min={30} max={480} className="w-full" />
+                    <InputNumber min={1} max={60} className="w-full" placeholder="5" />
                   </Form.Item>
                 </Col>
               </Row>
 
               <Row gutter={[12, 16]} className="sm:gutter-16">
                 <Col xs={24} sm={12}>
+                  <Form.Item
+                    label="Game Duration (minutes)"
+                    name="gameDuration"
+                  >
+                    <InputNumber min={30} max={480} className="w-full" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
                   <Form.Item label="Max Teams" name="maxTeams">
                     <InputNumber min={1} max={100} className="w-full" />
                   </Form.Item>
                 </Col>
+              </Row>
+
+              <Row gutter={[12, 16]} className="sm:gutter-16">
                 <Col xs={24} sm={12}>
                   <Form.Item label="Max Participants" name="maxParticipants">
                     <InputNumber min={1} max={500} className="w-full" />
