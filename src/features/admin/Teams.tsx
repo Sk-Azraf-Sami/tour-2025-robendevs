@@ -282,7 +282,7 @@ export default function Teams() {
         <div className="space-y-1">
           <div className="flex items-center justify-between">
             <Text className="text-xs sm:text-sm">
-              Checkpoint {record.currentCheckpoint}/
+              Checkpoint {record.currentCheckpoint-1}/
               {record.roadmap?.length || 0}
             </Text>
             <Text className="text-xs sm:text-sm font-medium">
