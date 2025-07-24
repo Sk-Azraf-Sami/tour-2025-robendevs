@@ -11,6 +11,7 @@ export class AuthService {
     try {
       // For teams, we'll use custom authentication since they don't have email
       const teams = await FirestoreService.getAllTeams();
+      console.log("teamssss",teams)
       const team = teams.find(
         (t) => t.username === username && t.passwordHash === password
       );
@@ -29,6 +30,7 @@ export class AuthService {
     try {
       // Fetch admin by username from Firestore
       const admins = await FirestoreService.getAllAdmins();
+      console.log("adminssss",admins)
       const admin = admins.find(
         (a) =>
           a.username === username &&
