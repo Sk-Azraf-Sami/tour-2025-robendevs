@@ -1,43 +1,107 @@
-import { Card, Typography, Row, Col, Form, Input, InputNumber, Switch, Button, Divider, message } from 'antd'
-import { SaveOutlined, SettingOutlined } from '@ant-design/icons'
+import { useEffect } from "react";
+import {
+  Card,
+  Typography,
+  Row,
+  Col,
+  Form,
+  Input,
+  InputNumber,
+  Button,
+  message,
+} from "antd";
+import { SaveOutlined, SettingOutlined } from "@ant-design/icons";
+import { FirestoreService } from "../../services/FireStoreService";
 
-const { Title, Text } = Typography
+const { Title, Text } = Typography;
 
 interface SettingsFormData {
-  gameName: string
-  basePoints: number
-  bonusPoints: number
-  penaltyPoints: number
-  maxTeams: number
-  maxParticipants: number
-  gameDuration: number
-  enableHints: boolean
-  enableTimer: boolean
-  allowRetries: boolean
-  emailNotifications: boolean
-  pushNotifications: boolean
+  gameName: string;
+  basePoints: number;
+  bonusPoints: number;
+  penaltyPoints: number;
+  maxTeams: number;
+  maxParticipants: number;
+  gameDuration: number;
+  enableHints: boolean;
+  enableTimer: boolean;
+  allowRetries: boolean;
+  emailNotifications: boolean;
+  pushNotifications: boolean;
 }
 
 export default function Settings() {
-  const [form] = Form.useForm()
+  const [form] = Form.useForm();
 
-  const handleSave = (values: SettingsFormData) => {
-    console.log('Settings saved:', values)
-    message.success('Settings saved successfully!')
-  }
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+        const settings = await FirestoreService.getGlobalSettings();
+        if (settings) {
+          form.setFieldsValue({
+            gameName: settings.gameName,
+            basePoints: settings.base_points,
+            bonusPoints: settings.bonus_per_minute,
+            penaltyPoints: settings.penalty_points,
+            maxTeams: settings.max_teams,
+            maxParticipants: settings.max_participants,
+            gameDuration: settings.game_duration,
+            enableHints: settings.enable_hints ?? true,
+            enableTimer: settings.enable_timer ?? true,
+            allowRetries: settings.allow_retries ?? false,
+            emailNotifications: settings.email_notifications ?? true,
+            pushNotifications: settings.push_notifications ?? true,
+          });
+        }
+      } catch (err) {
+        message.error("Failed to load settings");
+      }
+    }
+    fetchSettings();
+  }, [form]);
+
+  const handleSave = async (values: SettingsFormData) => {
+    try {
+      await FirestoreService.updateGlobalSettings({
+        gameName: values.gameName,
+        n_checkpoints: Math.floor(values.gameDuration / 24), // or use your logic
+        base_points: values.basePoints,
+        bonus_per_minute: values.bonusPoints,
+        penalty_points: values.penaltyPoints,
+        max_teams: values.maxTeams,
+        max_participants: values.maxParticipants,
+        game_duration: values.gameDuration,
+        // enable_hints: values.enableHints,
+        // enable_timer: values.enableTimer,
+        // allow_retries: values.allowRetries,
+        // email_notifications: values.emailNotifications,
+        // push_notifications: values.pushNotifications,
+      });
+      message.success("Settings saved to Firestore!");
+    } catch (err: any) {
+      message.error(
+        `Failed to save settings: ${err.message || "Unknown error"}`
+      );
+    }
+  };
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 sm:pb-4 space-y-3 sm:space-y-0">
         <div>
-          <Title level={2} className="!mb-1 flex items-center gap-2 text-lg sm:text-xl lg:text-2xl">
+          <Title
+            level={2}
+            className="!mb-1 flex items-center gap-2 text-lg sm:text-xl lg:text-2xl"
+          >
             <SettingOutlined />
             Global Settings
           </Title>
-          <Text className="text-gray-600 text-sm sm:text-base">Configure application-wide settings and preferences</Text>
+          <Text className="text-gray-600 text-sm sm:text-base">
+            Configure application-wide settings and preferences
+          </Text>
         </div>
-        <Button 
-          type="primary" 
+        <Button
+          type="primary"
           icon={<SaveOutlined />}
           onClick={() => form.submit()}
           size="large"
@@ -47,33 +111,20 @@ export default function Settings() {
         </Button>
       </div>
 
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSave}
-        initialValues={{
-          gameName: 'Tour 2025 - RobenDevs',
-          basePoints: 10,
-          bonusPoints: 5,
-          penaltyPoints: 2,
-          maxTeams: 50,
-          maxParticipants: 200,
-          gameDuration: 120,
-          enableHints: true,
-          enableTimer: true,
-          allowRetries: false,
-          emailNotifications: true,
-          pushNotifications: true,
-        }}
-      >
+      <Form form={form} layout="vertical" onFinish={handleSave}>
         <Row gutter={[16, 16]} className="lg:gutter-24">
           {/* Game Configuration */}
           <Col xs={24} lg={12}>
-            <Card title={<span className="text-sm sm:text-base">Game Configuration</span>} className="h-full">
+            <Card
+              title={
+                <span className="text-sm sm:text-base">Game Configuration</span>
+              }
+              className="h-full"
+            >
               <Form.Item
                 label="Game Name"
                 name="gameName"
-                rules={[{ required: true, message: 'Please enter game name' }]}
+                rules={[{ required: true, message: "Please enter game name" }]}
               >
                 <Input placeholder="Enter game name" />
               </Form.Item>
@@ -83,7 +134,9 @@ export default function Settings() {
                   <Form.Item
                     label="Base Points"
                     name="basePoints"
-                    rules={[{ required: true, message: 'Please enter base points' }]}
+                    rules={[
+                      { required: true, message: "Please enter base points" },
+                    ]}
                   >
                     <InputNumber min={1} className="w-full" />
                   </Form.Item>
@@ -119,114 +172,43 @@ export default function Settings() {
 
               <Row gutter={[12, 16]} className="sm:gutter-16">
                 <Col xs={24} sm={12}>
-                  <Form.Item
-                    label="Max Teams"
-                    name="maxTeams"
-                  >
+                  <Form.Item label="Max Teams" name="maxTeams">
                     <InputNumber min={1} max={100} className="w-full" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} sm={12}>
-                  <Form.Item
-                    label="Max Participants"
-                    name="maxParticipants"
-                  >
+                  <Form.Item label="Max Participants" name="maxParticipants">
                     <InputNumber min={1} max={500} className="w-full" />
                   </Form.Item>
                 </Col>
               </Row>
             </Card>
           </Col>
-
-          {/* Game Features */}
-          <Col xs={24} lg={12}>
-            <Card title={<span className="text-sm sm:text-base">Game Features</span>} className="h-full">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between py-2">
-                  <div>
-                    <Text strong className="text-sm sm:text-base">Enable Hints</Text>
-                    <br />
-                    <Text className="text-xs sm:text-sm text-gray-500">Allow teams to request hints</Text>
-                  </div>
-                  <Form.Item name="enableHints" valuePropName="checked" className="!mb-0">
-                    <Switch />
-                  </Form.Item>
-                </div>
-
-                <Divider className="!my-2" />
-
-                <div className="flex items-center justify-between py-2">
-                  <div>
-                    <Text strong>Enable Timer</Text>
-                    <br />
-                    <Text className="text-sm text-gray-500">Show countdown timer to participants</Text>
-                  </div>
-                  <Form.Item name="enableTimer" valuePropName="checked" className="!mb-0">
-                    <Switch />
-                  </Form.Item>
-                </div>
-
-                <Divider className="!my-2" />
-
-                <div className="flex items-center justify-between py-2">
-                  <div>
-                    <Text strong>Allow Retries</Text>
-                    <br />
-                    <Text className="text-sm text-gray-500">Let teams retry failed challenges</Text>
-                  </div>
-                  <Form.Item name="allowRetries" valuePropName="checked" className="!mb-0">
-                    <Switch />
-                  </Form.Item>
-                </div>
-
-                <Divider className="!my-2" />
-
-                <div className="flex items-center justify-between py-2">
-                  <div>
-                    <Text strong>Email Notifications</Text>
-                    <br />
-                    <Text className="text-sm text-gray-500">Send updates via email</Text>
-                  </div>
-                  <Form.Item name="emailNotifications" valuePropName="checked" className="!mb-0">
-                    <Switch />
-                  </Form.Item>
-                </div>
-
-                <Divider className="!my-2" />
-
-                <div className="flex items-center justify-between py-2">
-                  <div>
-                    <Text strong>Push Notifications</Text>
-                    <br />
-                    <Text className="text-sm text-gray-500">Send real-time notifications</Text>
-                  </div>
-                  <Form.Item name="pushNotifications" valuePropName="checked" className="!mb-0">
-                    <Switch />
-                  </Form.Item>
-                </div>
-              </div>
-            </Card>
-          </Col>
         </Row>
-
         {/* System Information */}
         <Card title="System Information">
           <Row gutter={[24, 16]}>
             <Col xs={24} md={8}>
               <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <Text strong className="block text-blue-600">Version</Text>
+                <Text strong className="block text-blue-600">
+                  Version
+                </Text>
                 <Text className="text-sm text-blue-700">1.0.0</Text>
               </div>
             </Col>
             <Col xs={24} md={8}>
               <div className="text-center p-4 bg-green-50 rounded-lg">
-                <Text strong className="block text-green-600">Status</Text>
+                <Text strong className="block text-green-600">
+                  Status
+                </Text>
                 <Text className="text-sm text-green-700">Active</Text>
               </div>
             </Col>
             <Col xs={24} md={8}>
               <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <Text strong className="block text-purple-600">Environment</Text>
+                <Text strong className="block text-purple-600">
+                  Environment
+                </Text>
                 <Text className="text-sm text-purple-700">Development</Text>
               </div>
             </Col>
@@ -234,5 +216,5 @@ export default function Settings() {
         </Card>
       </Form>
     </div>
-  )
+  );
 }

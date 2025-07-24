@@ -3,6 +3,16 @@ export interface GlobalSettings {
   n_checkpoints: number;
   base_points: number;
   bonus_per_minute: number;
+  penalty_points: number;
+  max_teams: number;
+  max_participants: number;
+  game_duration: number;
+  gameName: string;
+  enable_hints: boolean;
+  enable_timer: boolean;
+  allow_retries: boolean;
+  email_notifications: boolean;
+  push_notifications: boolean;
 }
 
 export interface Team {
