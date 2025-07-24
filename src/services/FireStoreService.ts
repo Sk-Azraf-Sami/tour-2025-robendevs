@@ -141,7 +141,7 @@ export class FirestoreService {
   }
 
   static async createAdmin(admin: Omit<Admin, "id">): Promise<string> {
-    const docRef = doc(collection(db, "admins"));
+    const docRef = doc(collection(db, "admin"));
     await setDoc(docRef, admin);
     return docRef.id;
   }
