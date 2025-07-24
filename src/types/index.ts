@@ -14,6 +14,10 @@ export interface GlobalSettings {
   allow_retries: boolean;
   email_notifications: boolean;
   push_notifications: boolean;
+  // Game state management fields
+  gameStatus?: 'waiting' | 'active' | 'paused' | 'completed';
+  gameStartTime?: number;
+  lastStateChange?: number;
 }
 
 export interface Team {

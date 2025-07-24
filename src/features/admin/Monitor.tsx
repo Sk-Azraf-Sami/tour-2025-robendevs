@@ -4,7 +4,6 @@ import {
   MonitorOutlined, 
   PlayCircleOutlined, 
   PauseCircleOutlined, 
-  StopOutlined,
   ExportOutlined,
   ReloadOutlined,
   EyeOutlined,
@@ -61,8 +60,9 @@ interface TeamMonitoringData {
 }
 
 interface GameStatusInfo {
-  status: 'waiting' | 'active' | 'paused' | 'completed'
+  status: 'waiting' | 'active' | 'paused' | 'stopped' | 'completed'
   activeTeams: number
+  pausedTeams: number
   completedTeams: number
   totalTeams: number
   averageProgress: number
@@ -73,6 +73,7 @@ export default function Monitor() {
   const [gameStatus, setGameStatus] = useState<GameStatusInfo>({
     status: 'waiting',
     activeTeams: 0,
+    pausedTeams: 0,
     completedTeams: 0,
     totalTeams: 0,
     averageProgress: 0,
@@ -89,36 +90,13 @@ export default function Monitor() {
   // Real-time data fetching
   const fetchTeamsData = async () => {
     try {
-      const teamsData = await GameService.getAllTeamsMonitoringData()
-      setTeams(teamsData)
+      const [teamsData, gameStatusData] = await Promise.all([
+        GameService.getAllTeamsMonitoringData(),
+        GameService.getGameStatus()
+      ]);
       
-      // Calculate game status
-      const totalTeams = teamsData.length
-      const activeTeams = teamsData.filter(t => t.isActive && t.status === 'in_progress').length
-      const completedTeams = teamsData.filter(t => t.status === 'completed').length
-      const averageProgress = totalTeams > 0 
-        ? teamsData.reduce((acc, team) => acc + team.completionPercentage, 0) / totalTeams
-        : 0
-      const totalPoints = teamsData.reduce((acc, team) => acc + team.totalPoints, 0)
-      
-      // Determine overall game status
-      let status: 'waiting' | 'active' | 'paused' | 'completed' = 'waiting'
-      if (completedTeams === totalTeams && totalTeams > 0) {
-        status = 'completed'
-      } else if (activeTeams > 0) {
-        status = 'active'
-      } else if (teamsData.some(t => t.gameStartTime)) {
-        status = 'paused'
-      }
-      
-      setGameStatus({
-        status,
-        activeTeams,
-        completedTeams,
-        totalTeams,
-        averageProgress: Math.round(averageProgress),
-        totalPoints
-      })
+      setTeams(teamsData);
+      setGameStatus(gameStatusData);
     } catch (error) {
       console.error('Error fetching teams data:', error)
       message.error('Failed to fetch teams data')
@@ -146,7 +124,7 @@ export default function Monitor() {
     }
   }, [])
 
-  const handleGameControl = async (action: 'start' | 'pause' | 'resume' | 'stop' | 'reset') => {
+  const handleGameControl = async (action: 'start' | 'pause' | 'resume' | 'reset') => {
     // Double confirmation for reset action
     if (action === 'reset') {
       Modal.confirm({
@@ -210,7 +188,7 @@ export default function Monitor() {
     executeGameControl(action);
   };
 
-  const executeGameControl = async (action: 'start' | 'pause' | 'resume' | 'stop' | 'reset') => {
+  const executeGameControl = async (action: 'start' | 'pause' | 'resume' | 'reset') => {
     setActionLoading(action)
     try {
       let result: { success: boolean; message: string }
@@ -224,9 +202,6 @@ export default function Monitor() {
           break
         case 'resume':
           result = await GameService.pauseResumeGame(false)
-          break
-        case 'stop':
-          result = await GameService.stopGame()
           break
         case 'reset':
           result = await GameService.resetGame()
@@ -447,6 +422,15 @@ export default function Monitor() {
       icon: <ClockCircleOutlined className="text-blue-600" />
     },
     {
+      title: 'Paused Teams',
+      value: gameStatus.pausedTeams,
+      total: gameStatus.totalTeams,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-200',
+      icon: <PauseCircleOutlined className="text-orange-600" />
+    },
+    {
       title: 'Completed',
       value: gameStatus.completedTeams,
       total: gameStatus.totalTeams,
@@ -456,22 +440,13 @@ export default function Monitor() {
       icon: <CheckCircleOutlined className="text-green-600" />
     },
     {
-      title: 'Average Progress',
-      value: gameStatus.averageProgress,
-      total: 100,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200',
-      icon: <MonitorOutlined className="text-purple-600" />
-    },
-    {
       title: 'Total Points',
       value: gameStatus.totalPoints,
       total: '',
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-200',
-      icon: <TrophyOutlined className="text-orange-600" />
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-200',
+      icon: <TrophyOutlined className="text-purple-600" />
     }
   ]
 
@@ -499,7 +474,12 @@ export default function Monitor() {
       <Card 
         title={<span className="text-sm sm:text-base">Game Status</span>}
         extra={
-          <Tag color={gameStatus.status === 'active' ? 'green' : gameStatus.status === 'paused' ? 'orange' : 'blue'}>
+          <Tag color={
+            gameStatus.status === 'active' ? 'green' : 
+            gameStatus.status === 'paused' ? 'orange' : 
+            gameStatus.status === 'stopped' ? 'red' :
+            gameStatus.status === 'completed' ? 'purple' : 'blue'
+          }>
             {gameStatus.status.toUpperCase()}
           </Tag>
         }
@@ -511,7 +491,9 @@ export default function Monitor() {
               <Text className="text-lg sm:text-2xl font-bold">
                 {gameStatus.status === 'waiting' ? 'Waiting to Start' :
                  gameStatus.status === 'active' ? 'Game Active' :
-                 gameStatus.status === 'paused' ? 'Game Paused' : 'Game Completed'}
+                 gameStatus.status === 'paused' ? 'Game Paused' : 
+                 gameStatus.status === 'stopped' ? 'Game Stopped' :
+                 'Game Completed'}
               </Text>
             </div>
           </Col>
@@ -529,16 +511,18 @@ export default function Monitor() {
                   >
                     Start Game
                   </Button>
-                  <Button 
-                    danger 
-                    icon={<RedoOutlined />}
-                    onClick={() => handleGameControl('reset')}
-                    size="small"
-                    loading={actionLoading === 'reset'}
-                    className="text-xs sm:text-sm"
-                  >
-                    <span className="hidden sm:inline">Reset</span>
-                  </Button>
+                  {gameStatus.totalTeams > 0 && (
+                    <Button 
+                      danger 
+                      icon={<RedoOutlined />}
+                      onClick={() => handleGameControl('reset')}
+                      size="small"
+                      loading={actionLoading === 'reset'}
+                      className="text-xs sm:text-sm"
+                    >
+                      <span className="hidden sm:inline">Reset</span>
+                    </Button>
+                  )}
                 </>
               )}
               {gameStatus.status === 'active' && (
@@ -551,16 +535,6 @@ export default function Monitor() {
                     className="text-xs sm:text-sm"
                   >
                     <span className="hidden sm:inline">Pause</span>
-                  </Button>
-                  <Button 
-                    danger 
-                    icon={<StopOutlined />}
-                    onClick={() => handleGameControl('stop')}
-                    size="small"
-                    loading={actionLoading === 'stop'}
-                    className="text-xs sm:text-sm"
-                  >
-                    <span className="hidden sm:inline">Stop</span>
                   </Button>
                   <Button 
                     danger 
@@ -589,16 +563,6 @@ export default function Monitor() {
                   </Button>
                   <Button 
                     danger 
-                    icon={<StopOutlined />}
-                    onClick={() => handleGameControl('stop')}
-                    size="small"
-                    loading={actionLoading === 'stop'}
-                    className="text-xs sm:text-sm"
-                  >
-                    <span className="hidden sm:inline">Stop</span>
-                  </Button>
-                  <Button 
-                    danger 
                     type="text"
                     icon={<RedoOutlined />}
                     onClick={() => handleGameControl('reset')}
@@ -610,17 +574,29 @@ export default function Monitor() {
                   </Button>
                 </>
               )}
-              {(gameStatus.status === 'completed' || gameStatus.status === 'waiting') && gameStatus.totalTeams > 0 && (
-                <Button 
-                  danger 
-                  icon={<RedoOutlined />}
-                  onClick={() => handleGameControl('reset')}
-                  size="small"
-                  loading={actionLoading === 'reset'}
-                  className="text-xs sm:text-sm"
-                >
-                  <span className="hidden sm:inline">Reset Game</span>
-                </Button>
+              {(gameStatus.status === 'stopped' || gameStatus.status === 'completed') && (
+                <>
+                  <Button 
+                    type="primary" 
+                    icon={<PlayCircleOutlined />}
+                    onClick={() => handleGameControl('start')}
+                    size="small"
+                    loading={actionLoading === 'start'}
+                    className="text-xs sm:text-sm"
+                  >
+                    Start New Game
+                  </Button>
+                  <Button 
+                    danger 
+                    icon={<RedoOutlined />}
+                    onClick={() => handleGameControl('reset')}
+                    size="small"
+                    loading={actionLoading === 'reset'}
+                    className="text-xs sm:text-sm"
+                  >
+                    Reset Game
+                  </Button>
+                </>
               )}
             </Space>
           </Col>
@@ -1156,10 +1132,10 @@ export default function Monitor() {
                   Export Team Data
                 </Button>
                 <Button 
-                  danger
-                  icon={<StopOutlined />}
+                  type="default"
+                  icon={<ExclamationCircleOutlined />}
                   onClick={() => {
-                    // Could implement team-specific actions like pause/stop
+                    // Could implement team-specific actions like alerts/notifications
                     message.info('Team-specific controls not implemented yet');
                   }}
                 >
