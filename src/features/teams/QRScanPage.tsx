@@ -53,41 +53,43 @@ export default function QRScanPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="text-center px-2">
-        <Title level={2} className="text-lg sm:text-xl md:text-2xl lg:text-3xl">Scan Checkpoint</Title>
+    <div className="space-y-3 sm:space-y-4 md:space-y-6">
+      <div className="text-center px-2 sm:px-4">
+        <Title level={2} className="text-lg sm:text-xl md:text-2xl lg:text-3xl mb-2">Scan Checkpoint</Title>
         <Text type="secondary" className="text-sm sm:text-base">Scan the QR code or enter the checkpoint code manually</Text>
       </div>
 
-      <div className="flex justify-center px-2">
-        <div className="flex justify-center w-auto">
+      <div className="flex justify-center px-2 sm:px-4">
+        <div className="w-full max-w-xs">
           <Radio.Group 
             value={scanMethod} 
             onChange={(e) => setScanMethod(e.target.value)}
             buttonStyle="solid"
             size="large"
-            className="inline-flex"
+            className="w-full grid grid-cols-2 gap-2"
           >
             <Radio.Button 
               value="camera" 
-              className="w-28 sm:w-32 text-center h-12 flex items-center justify-center text-sm sm:text-base font-medium"
+              className="text-center min-h-[48px] flex items-center justify-center text-sm sm:text-base font-medium"
             >
               <CameraOutlined className="mr-1 sm:mr-2" /> 
-              Scan
+              <span className="hidden sm:inline">Scan</span>
+              <span className="sm:hidden">Scan</span>
             </Radio.Button>
             <Radio.Button 
               value="manual" 
-              className="w-28 sm:w-32 text-center h-12 flex items-center justify-center text-sm sm:text-base font-medium"
+              className="text-center min-h-[48px] flex items-center justify-center text-sm sm:text-base font-medium"
             >
               <EditOutlined className="mr-1 sm:mr-2" /> 
-              Entry
+              <span className="hidden sm:inline">Manual</span>
+              <span className="sm:hidden">Manual</span>
             </Radio.Button>
           </Radio.Group>
         </div>
       </div>
 
       {scanMethod === 'camera' && (
-        <Card className="mx-2 sm:mx-0">
+        <Card className="mx-2 sm:mx-4 lg:mx-0">
           <div className="flex items-center gap-2 mb-3 sm:mb-4">
             <CameraOutlined className="text-base sm:text-lg" />
             <Title level={4} className="!mb-0 text-base sm:text-lg">Camera Scanner</Title>
@@ -95,7 +97,7 @@ export default function QRScanPage() {
           <Text type="secondary" className="block mb-3 sm:mb-4 text-sm sm:text-base">Point your camera at the QR code to scan</Text>
           
           <div className="space-y-3 sm:space-y-4">
-            <div className="aspect-square max-w-xs sm:max-w-sm mx-auto bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center p-4">
+            <div className="aspect-square max-w-xs sm:max-w-sm mx-auto bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center p-3 sm:p-4">
               {isScanning ? (
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-indigo-600 mx-auto mb-2 sm:mb-4"></div>
@@ -124,7 +126,7 @@ export default function QRScanPage() {
               size="large"
               onClick={handleCameraScan}
               disabled={isScanning || scanResult === 'success'}
-              className="w-full h-12 sm:h-auto text-sm sm:text-base"
+              className="w-full min-h-[48px] text-sm sm:text-base"
               icon={<CameraOutlined />}
             >
               {isScanning ? 'Scanning...' : 'Start Scan'}
@@ -134,7 +136,7 @@ export default function QRScanPage() {
       )}
 
       {scanMethod === 'manual' && (
-        <Card className="mx-2 sm:mx-0">
+        <Card className="mx-2 sm:mx-4 lg:mx-0">
           <div className="flex items-center gap-2 mb-3 sm:mb-4">
             <EditOutlined className="text-base sm:text-lg" />
             <Title level={4} className="!mb-0 text-base sm:text-lg">Manual Code Entry</Title>
@@ -150,6 +152,8 @@ export default function QRScanPage() {
                 onChange={(e) => setManualCode(e.target.value)}
                 className="font-mono text-sm sm:text-base"
                 size="large"
+                style={{ minHeight: '48px' }}
+                onPressEnter={handleManualSubmit}
               />
             </div>
 
@@ -157,8 +161,9 @@ export default function QRScanPage() {
               type="primary" 
               size="large" 
               onClick={handleManualSubmit} 
-              className="w-full h-12 sm:h-auto text-sm sm:text-base"
+              className="w-full min-h-[48px] text-sm sm:text-base"
               icon={<CheckCircleOutlined />}
+              disabled={!manualCode.trim()}
             >
               Verify Code
             </Button>
@@ -186,9 +191,9 @@ export default function QRScanPage() {
         </Card>
       )}
 
-      <Card className="mx-2 sm:mx-0">
-        <Title level={4} className="text-base sm:text-lg">Tips for Scanning</Title>
-        <ul className="text-xs sm:text-sm space-y-1 sm:space-y-2 text-gray-600 mt-3 sm:mt-4 pl-4">
+      <Card className="mx-2 sm:mx-4 lg:mx-0">
+        <Title level={4} className="text-base sm:text-lg mb-3">Tips for Scanning</Title>
+        <ul className="text-xs sm:text-sm space-y-1 sm:space-y-2 text-gray-600 pl-4">
           <li>• Make sure you're at the correct checkpoint location</li>
           <li>• Hold your device steady when scanning</li>
           <li>• Ensure good lighting for camera scanning</li>

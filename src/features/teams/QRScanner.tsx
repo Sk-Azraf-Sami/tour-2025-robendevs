@@ -56,13 +56,23 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   const startScan = () => {
     if (!isScanning && document.getElementById("qr-reader")) {
       try {
+        // Responsive QR box sizing based on screen width
+        const screenWidth = window.innerWidth
+        const qrBoxSize = screenWidth <= 480 ? 200 : screenWidth <= 768 ? 220 : 250
+        
         scannerRef.current = new Html5QrcodeScanner(
           "qr-reader",
           { 
             fps: 10, 
-            qrbox: { width: 250, height: 250 },
+            qrbox: { width: qrBoxSize, height: qrBoxSize },
             aspectRatio: 1.0,
-            disableFlip: false
+            disableFlip: false,
+            rememberLastUsedCamera: true,
+            showTorchButtonIfSupported: true,
+            showZoomSliderIfSupported: true,
+            defaultZoomValueIfSupported: 2,
+            // Mobile optimizations
+            supportedScanTypes: [0, 1] // QR Code and Data Matrix
           },
           false
         )
@@ -171,10 +181,14 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
       footer={null}
       title="Scan or Enter Checkpoint Code"
       width="100%"
-      style={{ maxWidth: '500px', top: 20 }}
+      style={{ 
+        maxWidth: '500px', 
+        top: window.innerWidth <= 768 ? 10 : 20,
+        margin: window.innerWidth <= 768 ? '10px' : 'auto'
+      }}
       className="qr-scanner-modal"
     >
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4 p-2 sm:p-0">
         {error && (
           <Alert 
             message="Error" 
@@ -182,26 +196,29 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             type="error" 
             closable 
             onClose={() => setError('')}
+            className="text-sm"
           />
         )}
 
         {/* Method Selection */}
         <div className="text-center">
-          <Text className="block mb-3 text-gray-600">Choose your preferred method:</Text>
+          <Text className="block mb-3 text-gray-600 text-sm sm:text-base">Choose your preferred method:</Text>
           <Radio.Group 
             value={scanMethod} 
             onChange={(e) => setScanMethod(e.target.value)}
             buttonStyle="solid"
             size="large"
-            className="w-full"
+            className="w-full grid grid-cols-2 gap-2"
           >
-            <Radio.Button value="camera" className="flex-1 text-center">
-              <CameraOutlined className="mr-2" />
-              Camera Scan
+            <Radio.Button value="camera" className="flex-1 text-center min-h-[48px] flex items-center justify-center text-sm sm:text-base">
+              <CameraOutlined className="mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Camera Scan</span>
+              <span className="sm:hidden">Scan</span>
             </Radio.Button>
-            <Radio.Button value="manual" className="flex-1 text-center">
-              <EditOutlined className="mr-2" />
-              Manual Entry
+            <Radio.Button value="manual" className="flex-1 text-center min-h-[48px] flex items-center justify-center text-sm sm:text-base">
+              <EditOutlined className="mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Manual Entry</span>
+              <span className="sm:hidden">Manual</span>
             </Radio.Button>
           </Radio.Group>
         </div>
@@ -210,14 +227,14 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
 
         {/* Camera Scanning Section */}
         {scanMethod === 'camera' && (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {/* QR Reader Container */}
             <div className="relative bg-gray-100 rounded-lg overflow-hidden">
               <div 
                 id="qr-reader" 
                 style={{ 
                   width: "100%", 
-                  minHeight: "320px", 
+                  minHeight: window.innerWidth <= 480 ? "280px" : "320px", 
                   borderRadius: 12, 
                   overflow: 'hidden' 
                 }}
@@ -225,11 +242,11 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
               
               {!isScanning && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 rounded-lg">
-                  <div className="text-white text-center space-y-4">
-                    <CameraOutlined className="text-6xl" />
+                  <div className="text-white text-center space-y-3 sm:space-y-4 p-4">
+                    <CameraOutlined className="text-4xl sm:text-6xl" />
                     <div>
-                      <p className="text-lg font-medium">Ready to Scan</p>
-                      <p className="text-sm opacity-75">Tap "Start Camera" to begin scanning</p>
+                      <p className="text-base sm:text-lg font-medium">Ready to Scan</p>
+                      <p className="text-xs sm:text-sm opacity-75 px-2">Tap "Start Camera" to begin scanning</p>
                     </div>
                   </div>
                 </div>
@@ -243,26 +260,28 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                   type="primary"
                   size="large"
                   onClick={startScan}
-                  className="flex-1"
+                  className="flex-1 min-h-[48px] text-sm sm:text-base"
                   icon={<CameraOutlined />}
                 >
-                  Start Camera
+                  <span className="hidden sm:inline">Start Camera</span>
+                  <span className="sm:hidden">Start</span>
                 </Button>
               ) : (
                 <Button
                   type="default"
                   size="large"
                   onClick={stopScan}
-                  className="flex-1"
+                  className="flex-1 min-h-[48px] text-sm sm:text-base"
                   danger
                 >
-                  Stop Scanning
+                  <span className="hidden sm:inline">Stop Scanning</span>
+                  <span className="sm:hidden">Stop</span>
                 </Button>
               )}
             </div>
 
             <div className="text-center space-y-2">
-              <Text className="text-gray-600 text-sm block">
+              <Text className="text-gray-600 text-xs sm:text-sm block px-2">
                 {isScanning 
                   ? "Position the QR code within the camera frame to scan automatically" 
                   : "Make sure to allow camera permissions when prompted"
@@ -271,18 +290,20 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
               
               {/* Mock scan buttons for development */}
               <div className="space-y-2">
-                <Text className="text-xs text-gray-500 block">Development Testing Buttons:</Text>
-                {mockQRCodes.map((mock, index) => (
-                  <Button 
-                    key={index}
-                    type="dashed" 
-                    onClick={() => handleMockScan(mock.code)}
-                    className="w-full text-xs"
-                    size="small"
-                  >
-                    {mock.label}
-                  </Button>
-                ))}
+                <Text className="text-xs text-gray-500 block">Development Testing:</Text>
+                <div className="grid grid-cols-1 gap-1">
+                  {mockQRCodes.map((mock, index) => (
+                    <Button 
+                      key={index}
+                      type="dashed" 
+                      onClick={() => handleMockScan(mock.code)}
+                      className="w-full text-xs min-h-[36px]"
+                      size="small"
+                    >
+                      {mock.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -290,10 +311,10 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
 
         {/* Manual Entry Section */}
         {scanMethod === 'manual' && (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="text-center">
-              <EditOutlined className="text-4xl text-blue-500 mb-3" />
-              <Text className="block text-gray-600">
+              <EditOutlined className="text-3xl sm:text-4xl text-blue-500 mb-2 sm:mb-3" />
+              <Text className="block text-gray-600 text-sm sm:text-base px-2">
                 {showScannedResult ? "QR Code Scanned Successfully!" : "Enter the checkpoint code found at your location"}
               </Text>
             </div>
@@ -305,13 +326,13 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                 description={
                   <div className="space-y-2">
                     <div>
-                      <Text strong className="text-sm">Raw QR Data:</Text>
+                      <Text strong className="text-xs sm:text-sm">Raw QR Data:</Text>
                       <div className="font-mono text-xs bg-gray-100 p-2 rounded mt-1 break-all">
                         {scannedRawCode}
                       </div>
                     </div>
                     <div>
-                      <Text strong className="text-sm">Extracted Code:</Text>
+                      <Text strong className="text-xs sm:text-sm">Extracted Code:</Text>
                       <div className="font-mono text-sm bg-green-100 p-2 rounded mt-1 text-green-800">
                         {manualCode}
                       </div>
@@ -323,20 +344,21 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                 }
                 type="success"
                 showIcon
-                className="text-sm"
+                className="text-xs sm:text-sm"
               />
             )}
             
             <div className="space-y-3">
               <div>
-                <Text strong className="block mb-2">Checkpoint Code:</Text>
+                <Text strong className="block mb-2 text-sm sm:text-base">Checkpoint Code:</Text>
                 <Input
-                  placeholder="Enter code (e.g., PUZZLE_717316, EXPLORER_STATUE_001)"
+                  placeholder="Enter code (e.g., PUZZLE_717316)"
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
-                  className="font-mono"
+                  className="font-mono text-sm sm:text-base"
                   size="large"
                   onPressEnter={handleManualSubmit}
+                  style={{ minHeight: '48px' }}
                 />
                 <Text className="text-xs text-gray-500 mt-1 block">
                   {showScannedResult 
@@ -350,12 +372,12 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                 type="primary" 
                 size="large" 
                 onClick={handleManualSubmit} 
-                className="w-full"
+                className="w-full min-h-[48px] text-sm sm:text-base"
                 icon={<CheckOutlined />}
                 loading={isValidating}
                 disabled={!manualCode.trim()}
               >
-                {isValidating ? 'Validating Code...' : (showScannedResult ? 'Submit Scanned Code' : 'Verify Code')}
+                {isValidating ? 'Validating...' : (showScannedResult ? 'Submit Scanned Code' : 'Verify Code')}
               </Button>
 
               {/* Option to scan again */}
@@ -369,10 +391,11 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                     setScannedRawCode('')
                     setManualCode('')
                   }} 
-                  className="w-full"
+                  className="w-full min-h-[48px] text-sm sm:text-base"
                   icon={<CameraOutlined />}
                 >
-                  Scan Another QR Code
+                  <span className="hidden sm:inline">Scan Another QR Code</span>
+                  <span className="sm:hidden">Scan Again</span>
                 </Button>
               )}
             </div>
@@ -383,19 +406,19 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                 description="At each checkpoint location, you'll find both a QR code AND a text code displayed nearby. If you can't scan the QR code, you can manually enter the text code instead. Both will work the same way!"
                 type="info"
                 showIcon
-                className="text-sm"
+                className="text-xs sm:text-sm"
               />
             )}
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-2 pt-4">
+        <div className="flex gap-2 pt-3 sm:pt-4">
           <Button 
             type="default" 
             icon={<CloseOutlined />}
             onClick={handleClose}
-            className="flex-1"
+            className="flex-1 min-h-[48px] text-sm sm:text-base"
           >
             Cancel
           </Button>
