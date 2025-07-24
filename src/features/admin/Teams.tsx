@@ -24,7 +24,7 @@ import {
   LockOutlined,
 } from "@ant-design/icons";
 import { FirestoreService } from "../../services/FireStoreService";
-import type { Team as FirestoreTeam } from "../../types";
+import type { Team as FirestoreTeam, Puzzle } from "../../types";
 
 const { Title, Text } = Typography;
 
@@ -33,7 +33,7 @@ interface Team {
   name: string;
   username: string;
   password: string;
-  members: number; // <-- Add this property to fix the error
+  members: number;
   progress: number;
   status: "active" | "completed" | "inactive";
   currentCheckpoint: number;
@@ -54,17 +54,22 @@ export default function Teams() {
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(true);
+  const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
 
-  // Load teams from Firestore
+  // Load teams and puzzles from Firestore
   useEffect(() => {
-    async function fetchTeams() {
+    async function fetchData() {
       setIsLoading(true);
       try {
-        const firestoreTeams = await FirestoreService.getAllTeams();
+        const [firestoreTeams, allPuzzles] = await Promise.all([
+          FirestoreService.getAllTeams(),
+          FirestoreService.getAllPuzzles(),
+        ]);
+        setPuzzles(allPuzzles);
         // Map Firestore data to local Team interface
         const mappedTeams: Team[] = firestoreTeams.map((t) => ({
           id: t.id,
-          name: t.username, // Firestore doesn't have 'name', so use username as name
+          name: t.username,
           username: t.username,
           password: t.passwordHash || "",
           members: t.members,
@@ -83,11 +88,11 @@ export default function Teams() {
         }));
         setTeams(mappedTeams);
       } catch (err) {
-        message.error("Failed to load teams");
+        message.error("Failed to load teams or puzzles");
       }
       setIsLoading(false);
     }
-    fetchTeams();
+    fetchData();
   }, []);
 
   const handleSubmit = async (values: FormValues) => {
@@ -99,7 +104,6 @@ export default function Teams() {
           username: values.username,
           passwordHash: values.password,
           members: values.members,
-          // Optionally update other fields
         });
         message.success("Team updated successfully");
       } else {
@@ -129,8 +133,12 @@ export default function Teams() {
         await FirestoreService.createTeam(newTeam);
         message.success("Team created successfully");
       }
-      // Refresh teams
-      const firestoreTeams = await FirestoreService.getAllTeams();
+      // Refresh teams and puzzles
+      const [firestoreTeams, allPuzzles] = await Promise.all([
+        FirestoreService.getAllTeams(),
+        FirestoreService.getAllPuzzles(),
+      ]);
+      setPuzzles(allPuzzles);
       const mappedTeams: Team[] = firestoreTeams.map((t) => ({
         id: t.id,
         name: t.username,
@@ -211,6 +219,12 @@ export default function Teams() {
     }
   };
 
+  // Create a lookup map for puzzle IDs to names (or checkpoint/text)
+  const puzzleNameMap = puzzles.reduce<Record<string, string>>((acc, p) => {
+    acc[p.id] =  p.checkpoint || p.id;
+    return acc;
+  }, {});
+
   const columns = [
     {
       title: "Team",
@@ -241,6 +255,22 @@ export default function Teams() {
             <LockOutlined className="text-gray-400" />
             <Text className="text-sm font-mono">{record.password}</Text>
           </div>
+        </div>
+      ),
+    },
+    {
+      title: "Roadmap",
+      key: "roadmap",
+      render: (_: unknown, record: Team) => (
+        <div className="flex flex-wrap gap-1">
+          {(record.roadmap || []).map((cp, idx) => (
+            <span
+              key={cp}
+              className="inline-block bg-indigo-100 text-indigo-700 rounded px-2 py-0.5 text-xs"
+            >
+              {idx + 1}: {puzzleNameMap[cp] || cp}
+            </span>
+          ))}
         </div>
       ),
     },
@@ -472,6 +502,6 @@ export default function Teams() {
           </div>
         </Form>
       </Modal>
-    </div>
+       </div>
   );
 }
