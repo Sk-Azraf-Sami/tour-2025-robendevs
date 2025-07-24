@@ -95,7 +95,6 @@ export default function TeamGameFlow() {
   })
   const [showScanner, setShowScanner] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [lastScannedData, setLastScannedData] = useState<string | null>(null)
 
   // DUMMY DATA - Replace with actual backend calls
   const mockMCQ = {
@@ -427,45 +426,10 @@ export default function TeamGameFlow() {
 
       {/* QR Scanner Modal */}
       {showScanner && (
-        <QRScanner
-          onScanSuccess={(decodedText) => {
-            setShowScanner(false);
-            setLastScannedData(decodedText);
-            handleQRScanned(decodedText);
-          }}
+        <QRScanner 
+          onScan={handleQRScanned}
           onClose={() => setShowScanner(false)}
         />
-      )}
-
-      {/* Show scanned QR code data to user after scan */}
-      {lastScannedData && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 24,
-            right: 24,
-            zIndex: 9999,
-            maxWidth: 320,
-            background: 'white',
-            border: '2px solid #22c55e',
-            borderRadius: 8,
-            boxShadow: '0 4px 24px 0 rgba(34,197,94,0.15)',
-            animation: 'fade-in 0.3s',
-            padding: 16
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ fontWeight: 700, color: '#15803d' }}>Scanned QR Code</span>
-            <button
-              onClick={() => setLastScannedData(null)}
-              style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: 20, fontWeight: 700, cursor: 'pointer' }}
-              aria-label="Close"
-            >✖</button>
-          </div>
-          <div style={{ wordBreak: 'break-all', color: '#1e293b', fontSize: 14, padding: 4 }}>
-            {lastScannedData}
-          </div>
-        </div>
       )}
     </div>
   )
