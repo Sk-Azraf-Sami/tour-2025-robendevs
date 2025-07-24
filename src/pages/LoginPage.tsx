@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Card, Tabs, Input, Button, Form, Alert, Typography } from 'antd'
 import { UserOutlined, LockOutlined, TrophyOutlined, UserSwitchOutlined, SettingOutlined } from '@ant-design/icons'
 import { useAuth } from '../contexts/auth'
@@ -123,12 +123,6 @@ export default function LoginPage() {
                         </Button>
                       </Form.Item>
                     </Form>
-
-                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                      <Text strong className="text-blue-800 text-sm block mb-1">Demo Credentials:</Text>
-                      <Text className="text-blue-700 text-xs block">team@example.com / team123</Text>
-                      <Text className="text-blue-700 text-xs block">team1@example.com / team123</Text>
-                    </div>
                   </div>
                 )
               },
@@ -193,11 +187,6 @@ export default function LoginPage() {
                         </Button>
                       </Form.Item>
                     </Form>
-
-                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                      <Text strong className="text-blue-800 text-sm block mb-1">Demo Credentials:</Text>
-                      <Text className="text-blue-700 text-xs">admin@robendevs.com / admin123</Text>
-                    </div>
                   </div>
                 )
               }
@@ -205,7 +194,7 @@ export default function LoginPage() {
           />
         </Card>
 
-        {/* Forgot Password & Sign Up Links */}
+        {/* Forgot Password & Sign Up Links 
         <div className="mt-4 sm:mt-6 text-center space-y-2 px-2 sm:px-0">
           <div>
             <Link 
@@ -226,7 +215,7 @@ export default function LoginPage() {
               </Link>
             </Text>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   )
