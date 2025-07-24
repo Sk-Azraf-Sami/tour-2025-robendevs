@@ -47,8 +47,8 @@ export class AuthService {
     await signOut(auth);
   }
 
-  private static hashPassword(password: string): string {
-    // Simple hash for demo - use proper hashing in production
-    return btoa(password);
-  }
+  // private static hashPassword(password: string): string {
+  //   // Simple hash for demo - use proper hashing in production
+  //   return btoa(password);
+  // }
 }

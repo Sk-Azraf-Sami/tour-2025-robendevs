@@ -64,7 +64,6 @@ export default function Settings() {
     try {
       await FirestoreService.updateGlobalSettings({
         gameName: values.gameName,
-        n_checkpoints: Math.floor(values.gameDuration / 24), // or use your logic
         base_points: values.basePoints,
         bonus_per_minute: values.bonusPoints,
         penalty_points: values.penaltyPoints,

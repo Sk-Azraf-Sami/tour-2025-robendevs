@@ -1,200 +1,236 @@
-import { useState, useEffect } from 'react'
-import { 
-  Card, 
-  Typography, 
-  Button, 
-  Table, 
-  Modal, 
-  Form, 
-  Input, 
-  Space, 
+import { useState, useEffect } from "react";
+import {
+  Card,
+  Typography,
+  Button,
+  Table,
+  Modal,
+  Form,
+  Input,
+  Space,
   Badge,
   Popconfirm,
   message,
   Row,
   Col,
-  Progress
-} from 'antd'
+  Progress,
+} from "antd";
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   TeamOutlined,
   UserOutlined,
-  LockOutlined
-} from '@ant-design/icons'
-import { FirestoreService } from '../../services/FireStoreService'
-import type { Team as FirestoreTeam } from '../../types'
+  LockOutlined,
+} from "@ant-design/icons";
+import { FirestoreService } from "../../services/FireStoreService";
+import type { Team as FirestoreTeam } from "../../types";
 
-const { Title, Text } = Typography
+const { Title, Text } = Typography;
 
 interface Team {
-  id: string
-  name: string
-  username: string
-  password: string
-  members: number
-  progress: number
-  status: 'active' | 'completed' | 'inactive'
-  currentCheckpoint: number
-  createdAt: string
+  id: string;
+  name: string;
+  username: string;
+  password: string;
+  members: number; // <-- Add this property to fix the error
+  progress: number;
+  status: "active" | "completed" | "inactive";
+  currentCheckpoint: number;
+  createdAt: string;
+  roadmap?: string[];
 }
 
 interface FormValues {
-  name: string
-  username: string
-  password: string
-  members: number
+  name: string;
+  username: string;
+  password: string;
+  members: number;
 }
 
 export default function Teams() {
-  const [teams, setTeams] = useState<Team[]>([])
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingTeam, setEditingTeam] = useState<Team | null>(null)
-  const [form] = Form.useForm()
-  const [isLoading, setIsLoading] = useState(true)
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [form] = Form.useForm();
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load teams from Firestore
   useEffect(() => {
     async function fetchTeams() {
-      setIsLoading(true)
+      setIsLoading(true);
       try {
-        const firestoreTeams = await FirestoreService.getAllTeams()
+        const firestoreTeams = await FirestoreService.getAllTeams();
         // Map Firestore data to local Team interface
         const mappedTeams: Team[] = firestoreTeams.map((t) => ({
           id: t.id,
           name: t.username, // Firestore doesn't have 'name', so use username as name
           username: t.username,
-          password: t.passwordHash || '',
-          members: t.legs ? t.legs.length : 1,
-          progress: t.roadmap && t.roadmap.length > 0 ? Math.round(((t.currentIndex || 0) / t.roadmap.length) * 100) : 0,
-          status: t.isActive ? (t.currentIndex >= (t.roadmap?.length || 0) ? 'completed' : 'active') : 'inactive',
+          password: t.passwordHash || "",
+          members: t.members,
+          progress:
+            t.roadmap && t.roadmap.length > 0
+              ? Math.round(((t.currentIndex || 0) / t.roadmap.length) * 100)
+              : 0,
+          status: t.isActive
+            ? t.currentIndex >= (t.roadmap?.length || 0)
+              ? "completed"
+              : "active"
+            : "inactive",
           currentCheckpoint: (t.currentIndex || 0) + 1,
-          createdAt: t.createdAt || '',
-        }))
-        setTeams(mappedTeams)
+          createdAt: t.createdAt || "",
+          roadmap: t.roadmap,
+        }));
+        setTeams(mappedTeams);
       } catch (err) {
-        message.error('Failed to load teams')
+        message.error("Failed to load teams");
       }
-      setIsLoading(false)
+      setIsLoading(false);
     }
-    fetchTeams()
-  }, [])
+    fetchTeams();
+  }, []);
 
   const handleSubmit = async (values: FormValues) => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       if (editingTeam) {
         // Update Firestore team
         await FirestoreService.updateTeam(editingTeam.id, {
           username: values.username,
           passwordHash: values.password,
+          members: values.members,
           // Optionally update other fields
-        })
-        message.success('Team updated successfully')
+        });
+        message.success("Team updated successfully");
       } else {
+        // Fetch all puzzles to set checkpoints
+        const puzzles = await FirestoreService.getAllPuzzles();
+        // Find the starting puzzle (isStarting: true)
+        const startingPuzzle = puzzles.find((p) => p.isStarting);
+        if (!startingPuzzle) throw new Error("No starting puzzle found");
+        // Exclude starting puzzle and shuffle the rest
+        const otherPuzzles = puzzles.filter((p) => !p.isStarting);
+        const shuffledOtherIds = otherPuzzles
+          .map((p) => p.id)
+          .sort(() => Math.random() - 0.5);
+        // Roadmap: starting puzzle first, then shuffled others
+        const puzzleIds = [startingPuzzle.id, ...shuffledOtherIds];
         // Create new Firestore team
-        const newTeam: Omit<FirestoreTeam, 'id'> = {
+        const newTeam: Omit<FirestoreTeam, "id"> = {
           username: values.username,
           passwordHash: values.password,
-          roadmap: [],
+          members: values.members,
+          roadmap: puzzleIds,
           currentIndex: 0,
           totalTime: 0,
           totalPoints: 0,
-          legs: [],
           isActive: false,
-        }
-        await FirestoreService.createTeam(newTeam)
-        message.success('Team created successfully')
+        };
+        await FirestoreService.createTeam(newTeam);
+        message.success("Team created successfully");
       }
       // Refresh teams
-      const firestoreTeams = await FirestoreService.getAllTeams()
+      const firestoreTeams = await FirestoreService.getAllTeams();
       const mappedTeams: Team[] = firestoreTeams.map((t) => ({
         id: t.id,
         name: t.username,
         username: t.username,
-        password: t.passwordHash || '',
-        members: t.legs ? t.legs.length : 1,
-        progress: t.roadmap && t.roadmap.length > 0 ? Math.round(((t.currentIndex || 0) / t.roadmap.length) * 100) : 0,
-        status: t.isActive ? (t.currentIndex >= (t.roadmap?.length || 0) ? 'completed' : 'active') : 'inactive',
+        password: t.passwordHash || "",
+        members: t.members,
+        progress:
+          t.roadmap && t.roadmap.length > 0
+            ? Math.round(((t.currentIndex || 0) / t.roadmap.length) * 100)
+            : 0,
+        status: t.isActive
+          ? t.currentIndex >= (t.roadmap?.length || 0)
+            ? "completed"
+            : "active"
+          : "inactive",
         currentCheckpoint: (t.currentIndex || 0) + 1,
-        createdAt: t.createdAt || '',
-      }))
-      setTeams(mappedTeams)
-      setIsModalOpen(false)
-      resetForm()
+        createdAt: t.createdAt || "",
+        roadmap: t.roadmap,
+      }));
+      setTeams(mappedTeams);
+      setIsModalOpen(false);
+      resetForm();
     } catch (err: any) {
-      message.error(`Failed to save team: ${err.message || 'Unknown error'}`)
+      message.error(`Failed to save team: ${err.message || "Unknown error"}`);
     }
-    setIsLoading(false)
-  }
+    setIsLoading(false);
+  };
 
   const resetForm = () => {
-    form.resetFields()
-    setEditingTeam(null)
-  }
+    form.resetFields();
+    setEditingTeam(null);
+  };
 
   const handleEdit = (team: Team) => {
-    setEditingTeam(team)
+    setEditingTeam(team);
     form.setFieldsValue({
       name: team.name,
       username: team.username,
       password: team.password,
-      members: team.members
-    })
-    setIsModalOpen(true)
-  }
+      members: team.members,
+    });
+    setIsModalOpen(true);
+  };
 
   const handleDelete = async (id: string) => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      await FirestoreService.deleteTeam(id)
-      message.success('Team deleted successfully')
-      setTeams(prev => prev.filter(team => team.id !== id))
+      await FirestoreService.deleteTeam(id);
+      message.success("Team deleted successfully");
+      setTeams((prev) => prev.filter((team) => team.id !== id));
     } catch (err) {
-      message.error('Failed to delete team')
+      message.error("Failed to delete team");
     }
-    setIsLoading(false)
-  }
+    setIsLoading(false);
+  };
 
   const handleAdd = () => {
-    setEditingTeam(null)
+    setEditingTeam(null);
     form.setFieldsValue({
-      name: '',
-      username: '',
-      password: '',
-      members: 1
-    })
-    setIsModalOpen(true)
-  }
+      name: "",
+      username: "",
+      password: "",
+      members: 1,
+    });
+    setIsModalOpen(true);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'processing'
-      case 'completed': return 'success'
-      case 'inactive': return 'default'
-      default: return 'default'
+      case "active":
+        return "processing";
+      case "completed":
+        return "success";
+      case "inactive":
+        return "default";
+      default:
+        return "default";
     }
-  }
+  };
 
   const columns = [
     {
-      title: 'Team',
-      dataIndex: 'name',
-      key: 'name',
+      title: "Team",
+      dataIndex: "name",
+      key: "name",
       render: (name: string, record: Team) => (
         <div>
-          <Text strong className="text-sm sm:text-base">{name}</Text>
+          <Text strong className="text-sm sm:text-base">
+            {name}
+          </Text>
           <div className="text-xs text-gray-500">
-            {record.members} member{record.members !== 1 ? 's' : ''}
+            {record.members} member{record.members !== 1 ? "s" : ""}
           </div>
         </div>
-      )
+      ),
     },
     {
-      title: 'Credentials',
-      key: 'credentials',
-      className: 'hidden sm:table-cell',
+      title: "Credentials",
+      key: "credentials",
+      className: "hidden sm:table-cell",
       render: (_: unknown, record: Team) => (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -206,35 +242,51 @@ export default function Teams() {
             <Text className="text-sm font-mono">{record.password}</Text>
           </div>
         </div>
-      )
+      ),
     },
     {
-      title: 'Progress',
-      key: 'progress',
+      title: "Progress",
+      key: "progress",
       render: (_: unknown, record: Team) => (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <Text className="text-xs sm:text-sm">Checkpoint {record.currentCheckpoint}/{record.progress === 100 ? record.currentCheckpoint : (record.progress > 0 ? Math.round(record.currentCheckpoint / (record.progress / 100)) : 8)}</Text>
-            <Text className="text-xs sm:text-sm font-medium">{record.progress}%</Text>
+            <Text className="text-xs sm:text-sm">
+              Checkpoint {record.currentCheckpoint}/
+              {record.roadmap?.length || 0}
+            </Text>
+            <Text className="text-xs sm:text-sm font-medium">
+              {record.progress}%
+            </Text>
           </div>
           <Progress percent={record.progress} size="small" />
         </div>
-      )
+      ),
     },
     {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
       render: (status: string) => (
-        <Badge 
-          status={getStatusColor(status) as "success" | "processing" | "default" | "error" | "warning"} 
-          text={<span className="text-xs sm:text-sm">{status.charAt(0).toUpperCase() + status.slice(1)}</span>}
+        <Badge
+          status={
+            getStatusColor(status) as
+              | "success"
+              | "processing"
+              | "default"
+              | "error"
+              | "warning"
+          }
+          text={
+            <span className="text-xs sm:text-sm">
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </span>
+          }
         />
-      )
+      ),
     },
     {
-      title: 'Actions',
-      key: 'actions',
+      title: "Actions",
+      key: "actions",
       render: (_: unknown, record: Team) => (
         <Space size="small">
           <Button
@@ -251,31 +303,42 @@ export default function Teams() {
             cancelText="No"
             placement="topRight"
           >
-            <Button
-              type="text"
-              icon={<DeleteOutlined />}
-              danger
-              size="small"
-            />
+            <Button type="text" icon={<DeleteOutlined />} danger size="small" />
           </Popconfirm>
         </Space>
-      )
-    }
-  ]
+      ),
+    },
+  ];
 
   const stats = [
     { title: "Total Teams", value: teams.length, color: "text-blue-600" },
-    { title: "Active Teams", value: teams.filter(t => t.status === 'active').length, color: "text-green-600" },
-    { title: "Completed", value: teams.filter(t => t.status === 'completed').length, color: "text-purple-600" },
-    { title: "Total Members", value: teams.reduce((sum, team) => sum + team.members, 0), color: "text-orange-600" }
-  ]
+    {
+      title: "Active Teams",
+      value: teams.filter((t) => t.status === "active").length,
+      color: "text-green-600",
+    },
+    {
+      title: "Completed",
+      value: teams.filter((t) => t.status === "completed").length,
+      color: "text-purple-600",
+    },
+    {
+      title: "Total Members",
+      value: teams.reduce((sum, team) => sum + Number(team.members), 0),
+      color: "text-orange-600",
+    },
+  ];
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 sm:pb-4 space-y-3 sm:space-y-0">
         <div>
-          <Title level={2} className="!mb-1 text-lg sm:text-xl lg:text-2xl">Team Management</Title>
-          <Text className="text-gray-600 text-sm sm:text-base">Create and manage team accounts for the treasure hunt</Text>
+          <Title level={2} className="!mb-1 text-lg sm:text-xl lg:text-2xl">
+            Team Management
+          </Title>
+          <Text className="text-gray-600 text-sm sm:text-base">
+            Create and manage team accounts for the treasure hunt
+          </Text>
         </div>
         <Button
           type="primary"
@@ -294,8 +357,12 @@ export default function Teams() {
         {stats.map((stat, index) => (
           <Col xs={12} sm={6} key={index}>
             <Card className="bg-gray-50 border border-gray-200">
-              <div className={`text-base sm:text-2xl font-bold ${stat.color}`}>{stat.value}</div>
-              <div className="text-xs sm:text-sm text-gray-600 truncate">{stat.title}</div>
+              <div className={`text-base sm:text-2xl font-bold ${stat.color}`}>
+                {stat.value}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600 truncate">
+                {stat.title}
+              </div>
             </Card>
           </Col>
         ))}
@@ -312,19 +379,24 @@ export default function Teams() {
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+            showTotal: (total, range) =>
+              `${range[0]}-${range[1]} of ${total} items`,
             responsive: true,
-            size: 'small'
+            size: "small",
           }}
           size="middle"
           locale={{
             emptyText: (
               <div className="py-6 sm:py-8 text-center">
                 <TeamOutlined className="text-4xl text-gray-400 mb-4" />
-                <Title level={4} className="text-gray-500">No teams found</Title>
-                <Text className="text-gray-400">Get started by creating your first team.</Text>
+                <Title level={4} className="text-gray-500">
+                  No teams found
+                </Title>
+                <Text className="text-gray-400">
+                  Get started by creating your first team.
+                </Text>
               </div>
-            )
+            ),
           }}
         />
       </Card>
@@ -334,8 +406,8 @@ export default function Teams() {
         title={editingTeam ? "Edit Team" : "Create New Team"}
         open={isModalOpen}
         onCancel={() => {
-          setIsModalOpen(false)
-          resetForm()
+          setIsModalOpen(false);
+          resetForm();
         }}
         footer={null}
         width={500}
@@ -349,7 +421,7 @@ export default function Teams() {
           <Form.Item
             name="name"
             label="Team Name"
-            rules={[{ required: true, message: 'Please enter the team name' }]}
+            rules={[{ required: true, message: "Please enter the team name" }]}
           >
             <Input placeholder="Enter team name" />
           </Form.Item>
@@ -357,7 +429,7 @@ export default function Teams() {
           <Form.Item
             name="username"
             label="Username"
-            rules={[{ required: true, message: 'Please enter the username' }]}
+            rules={[{ required: true, message: "Please enter the username" }]}
           >
             <Input placeholder="Enter login username" />
           </Form.Item>
@@ -365,7 +437,7 @@ export default function Teams() {
           <Form.Item
             name="password"
             label="Password"
-            rules={[{ required: true, message: 'Please enter the password' }]}
+            rules={[{ required: true, message: "Please enter the password" }]}
           >
             <Input.Password placeholder="Enter login password" />
           </Form.Item>
@@ -373,24 +445,33 @@ export default function Teams() {
           <Form.Item
             name="members"
             label="Number of Members"
-            rules={[{ required: true, message: 'Please enter number of members' }]}
+            rules={[
+              { required: true, message: "Please enter number of members" },
+            ]}
           >
-            <Input type="number" min={1} max={10} placeholder="Number of team members" />
+            <Input
+              type="number"
+              min={1}
+              max={10}
+              placeholder="Number of team members"
+            />
           </Form.Item>
 
           <div className="flex justify-end gap-2 mt-6">
-            <Button onClick={() => {
-              setIsModalOpen(false)
-              resetForm()
-            }}>
+            <Button
+              onClick={() => {
+                setIsModalOpen(false);
+                resetForm();
+              }}
+            >
               Cancel
             </Button>
             <Button type="primary" htmlType="submit" loading={isLoading}>
-              {editingTeam ? 'Update' : 'Create'} Team
+              {editingTeam ? "Update" : "Create"} Team
             </Button>
           </div>
         </Form>
       </Modal>
     </div>
-  )
+  );
 }

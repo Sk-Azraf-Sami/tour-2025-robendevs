@@ -62,43 +62,45 @@ export default function Puzzles() {
     form.setFieldValue('code', randomCode)
   }
 
-  // ...existing code...
+  const handleSubmit = async (values: FormValues) => {
+    setIsLoading(true)
+    try {
+      // Find index for checkpoint and isStarting
+      let puzzleIndex = editingPuzzle
+        ? puzzles.findIndex(p => p.id === editingPuzzle.id)
+        : puzzles.length
 
-const handleSubmit = async (values: FormValues) => {
-  setIsLoading(true)
-  try {
-    // Clean and validate the data before sending to Firestore
-    const puzzleData: Partial<Puzzle> = {
-      text: values.text.trim(),
-      code: values.code.trim(),
-    }
+      const puzzleData: Partial<Puzzle> = {
+        text: values.text.trim(),
+        code: values.code.trim(),
+        checkpoint: `cp_${puzzleIndex}`,
+        isStarting: puzzleIndex === 0,
+      }
 
-    // Only include imageURL if it has a valid value
-    if (values.imageURL && values.imageURL.trim()) {
-      puzzleData.imageURL = values.imageURL.trim()
-    }
+      // Only include imageURL if it has a valid value
+      if (values.imageURL && values.imageURL.trim()) {
+        puzzleData.imageURL = values.imageURL.trim()
+      }
 
-    if (editingPuzzle) {
-      await FirestoreService.updatePuzzle(editingPuzzle.id, puzzleData)
-      message.success('Puzzle updated successfully')
-    } else {
-      await FirestoreService.createPuzzle(puzzleData as Omit<Puzzle, 'id'>)
-      message.success('Puzzle created successfully')
+      if (editingPuzzle) {
+        await FirestoreService.updatePuzzle(editingPuzzle.id, puzzleData)
+        message.success('Puzzle updated successfully')
+      } else {
+        await FirestoreService.createPuzzle(puzzleData as Omit<Puzzle, 'id'>)
+        message.success('Puzzle created successfully')
+      }
+      
+      // Refresh puzzles
+      const data = await FirestoreService.getAllPuzzles()
+      setPuzzles(data)
+      setIsModalOpen(false)
+      resetForm()
+    } catch (err: any) {
+      console.error('Firestore error details:', err)
+      message.error(`Failed to save puzzle: ${err.message || 'Unknown error'}`)
     }
-    
-    // Refresh puzzles
-    const data = await FirestoreService.getAllPuzzles()
-    setPuzzles(data)
-    setIsModalOpen(false)
-    resetForm()
-  } catch (err: any) {
-    console.error('Firestore error details:', err)
-    message.error(`Failed to save puzzle: ${err.message || 'Unknown error'}`)
+    setIsLoading(false)
   }
-  setIsLoading(false)
-}
-
-// ...existing code...
 
   const resetForm = () => {
     form.resetFields()
@@ -169,6 +171,24 @@ const handleSubmit = async (values: FormValues) => {
           <QrcodeOutlined className="text-gray-500" />
           <Text code className="text-sm">{code}</Text>
         </div>
+      )
+    },
+    {
+      title: 'Checkpoint',
+      dataIndex: 'checkpoint',
+      key: 'checkpoint',
+      render: (checkpoint: string) => (
+        <Text className="text-blue-600">{checkpoint}</Text>
+      )
+    },
+    {
+      title: 'Is Starting',
+      dataIndex: 'isStarting',
+      key: 'isStarting',
+      render: (isStarting: boolean) => (
+        <Text className={isStarting ? "text-green-600" : "text-gray-500"}>
+          {isStarting ? "Yes" : "No"}
+        </Text>
       )
     },
     {
