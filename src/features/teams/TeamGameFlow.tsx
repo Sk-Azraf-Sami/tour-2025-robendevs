@@ -354,8 +354,9 @@ export default function TeamGameFlow() {
       {/* Header with Progress */}
       <div className="text-center px-2">
         <Title level={2} className="text-lg sm:text-xl md:text-2xl lg:text-3xl">
-          Checkpoint {getCurrentCheckpointNumber()} of{" "}
-          {gameState.totalCheckpoints}
+          {getCurrentCheckpointNumber() > gameState.totalCheckpoints
+            ? `Your team completed all ${gameState.totalCheckpoints} checkpoints`
+            : `Checkpoint ${getCurrentCheckpointNumber()} of ${gameState.totalCheckpoints}`}
         </Title>
         <Text type="secondary" className="text-sm sm:text-base">
           Follow the roadmap to complete your treasure hunt
@@ -373,7 +374,10 @@ export default function TeamGameFlow() {
               {getProgressPercentage().toFixed(2)}% Complete
             </Text>
           </div>
-          <Progress percent={parseFloat(getProgressPercentage().toFixed(2))} strokeColor="#4f46e5" />
+          <Progress
+            percent={parseFloat(getProgressPercentage().toFixed(2))}
+            strokeColor="#4f46e5"
+          />
           <div className="grid grid-cols-2 gap-4 text-center">
             <div>
               <div className="flex items-center justify-center mb-1">
@@ -456,9 +460,13 @@ export default function TeamGameFlow() {
               onClick={() => setShowScanner(true)}
               className="w-full"
               loading={isProcessing}
+              disabled={
+                getCurrentCheckpointNumber() > gameState.totalCheckpoints
+              }
             >
-              Scan QR Code or Enter Code for Checkpoint{" "}
-              {getCurrentCheckpointNumber()}
+              {getCurrentCheckpointNumber() > gameState.totalCheckpoints
+                ? "You completed all checkpoints"
+                : `Scan QR Code or Enter Code for Checkpoint ${getCurrentCheckpointNumber()}`}
             </Button>
           </div>
         </Card>
