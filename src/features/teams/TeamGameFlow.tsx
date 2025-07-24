@@ -382,6 +382,7 @@ export default function TeamGameFlow() {
                 <div className="text-left space-y-2">
                   <p><strong>Your Unique Route:</strong> Your team follows a personalized path through {gameState.totalCheckpoints} checkpoints. Other teams visit the same locations but in different orders.</p>
                   <p><strong>Current Target:</strong> You are looking for checkpoint {getCurrentCheckpointNumber()} of {gameState.totalCheckpoints}. Only the QR code for THIS specific checkpoint will work.</p>
+                  <p><strong>Scanning Options:</strong> You can either scan the QR code OR manually enter the text code displayed at each checkpoint location.</p>
                   <p><strong>The Flow:</strong> Scan QR → Answer MCQ → Get Puzzle → Find Next Location → Repeat</p>
                   <p><strong>Scoring:</strong> Earn points from correct answers plus time bonuses for speed!</p>
                 </div>
@@ -399,7 +400,7 @@ export default function TeamGameFlow() {
               className="w-full"
               loading={isProcessing}
             >
-              Scan QR Code for Checkpoint {getCurrentCheckpointNumber()}
+              Scan QR Code or Enter Code for Checkpoint {getCurrentCheckpointNumber()}
             </Button>
           </div>
         </Card>
@@ -430,13 +431,13 @@ export default function TeamGameFlow() {
             🎯 Remember: Each checkpoint follows the same pattern
           </Text>
           <div className="text-xs text-blue-600 space-y-1">
-            <div>1️⃣ <strong>Scan QR</strong> → Validate you're at the right checkpoint</div>
+            <div>1️⃣ <strong>Scan QR or Enter Code</strong> → Validate you're at the right checkpoint</div>
             <div>2️⃣ <strong>Answer MCQ</strong> → Earn points based on correctness + speed</div>
             <div>3️⃣ <strong>Get Puzzle</strong> → Receive clues to find your NEXT checkpoint</div>
-            <div>4️⃣ <strong>Find Location</strong> → Use puzzle clues to locate the next QR code</div>
+            <div>4️⃣ <strong>Find Location</strong> → Use puzzle clues to locate the next checkpoint</div>
           </div>
           <Text className="text-xs text-blue-600 block mt-2">
-            💡 <strong>Pro Tip:</strong> The puzzle you get after answering an MCQ always leads to your next checkpoint location. Each team has a different route!
+            💡 <strong>Pro Tip:</strong> Each checkpoint has both a QR code and a text code. If scanning doesn't work, just enter the code manually! The puzzle you get after answering leads to your next checkpoint location.
           </Text>
         </div>
       </Card>

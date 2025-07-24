@@ -23,6 +23,7 @@ export interface Team {
   currentIndex: number;
   totalTime: number;
   totalPoints: number;
+  legs: TeamLeg[];  // REQUIRED: Detailed checkpoint progress tracking per PRD
   isActive: boolean;
   gameStartTime?: number;
   createdAt?: string; 

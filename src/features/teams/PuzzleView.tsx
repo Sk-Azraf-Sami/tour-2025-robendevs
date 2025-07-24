@@ -113,14 +113,12 @@ export default function PuzzleView({ puzzle, onProceedToScan }: PuzzleViewProps)
       {/* Action Card */}
       <Card className="mx-2 sm:mx-0">
         <Title level={4} className="text-base sm:text-lg">Find the Location</Title>
-        <Text type="secondary" className="block mb-3 sm:mb-4 text-sm sm:text-base">
-          Use the puzzle clue to find the next checkpoint location, then scan the QR code there
-        </Text>
-        
-        <div className="space-y-3 sm:space-y-4">
+          <Text type="secondary" className="block mb-3 sm:mb-4 text-sm sm:text-base">
+            Use the puzzle clue to find the next checkpoint location, then scan the QR code or enter the text code
+          </Text>        <div className="space-y-3 sm:space-y-4">
           <Alert
             message="How it works"
-            description="The puzzle gives you clues to find a real-world location. Once you find it, look for a QR code to scan. Only the correct QR code for your current checkpoint will work."
+            description="The puzzle gives you clues to find a real-world location. Once you find it, look for a QR code or text code to scan/enter. Only the correct code for your current checkpoint will work."
             type="info"
             showIcon
             className="text-sm sm:text-base"
@@ -146,8 +144,8 @@ export default function PuzzleView({ puzzle, onProceedToScan }: PuzzleViewProps)
           <li>• Use the image as a visual clue if provided</li>
           <li>• Look for keywords that describe locations or landmarks</li>
           <li>• Navigate to the physical location in the real world</li>
-          <li>• Find and scan the QR code at that location</li>
-          <li>• Only the correct QR code for your checkpoint will advance the game</li>
+          <li>• Find and scan the QR code at that location, or enter the text code manually</li>
+          <li>• Only the correct code for your checkpoint will advance the game</li>
         </ul>
       </Card>
     </div>
