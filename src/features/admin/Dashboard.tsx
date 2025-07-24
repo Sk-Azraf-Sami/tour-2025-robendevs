@@ -10,48 +10,38 @@ import {
 } from '@ant-design/icons'
 
 const { Title, Text } = Typography
-import { useState, useEffect } from 'react'
-import { FirestoreService } from "../../services/FireStoreService";
-
 
 export default function Dashboard() {
-   const [stats, setStats] = useState([
-    { title: "Active Teams", value: 0, description: "Teams currently playing", icon: <TeamOutlined className="text-2xl text-blue-500" />, color: "bg-blue-50 border-blue-200" },
-    { title: "Total MCQs", value: 0, description: "Questions in database", icon: <QuestionCircleOutlined className="text-2xl text-green-500" />, color: "bg-green-50 border-green-200" },
-    { title: "Checkpoints", value: 0, description: "Active checkpoint locations", icon: <EnvironmentOutlined className="text-2xl text-purple-500" />, color: "bg-purple-50 border-purple-200" },
-    { title: "Puzzles", value: 0, description: "Puzzle challenges created", icon: <TrophyOutlined className="text-2xl text-orange-500" />, color: "bg-orange-50 border-orange-200" }
-  ])
-
-  useEffect(() => {
-    async function fetchStats() {
-      // Replace these with your actual FirestoreService or backend calls
-      const [teams, mcqs, puzzles] = await Promise.all([
-        FirestoreService.getAllTeams(),
-        FirestoreService.getAllMCQs(),
-        FirestoreService.getAllPuzzles()
-      ])
-      setStats([
-        {
-          ...stats[0],
-          value: teams.filter((t: any) => t.isActive).length
-        },
-        {
-          ...stats[1],
-          value: mcqs.length
-        },
-        {
-          ...stats[2],
-          value: puzzles.length
-        },
-        {
-          ...stats[3],
-          value: puzzles.length
-        }
-      ])
+  const stats = [
+    {
+      title: "Active Teams",
+      value: 12,
+      description: "Teams currently playing",
+      icon: <TeamOutlined className="text-2xl text-blue-500" />,
+      color: "bg-blue-50 border-blue-200"
+    },
+    {
+      title: "Total MCQs",
+      value: 24,
+      description: "Questions in database",
+      icon: <QuestionCircleOutlined className="text-2xl text-green-500" />,
+      color: "bg-green-50 border-green-200"
+    },
+    {
+      title: "Checkpoints",
+      value: 8, 
+      description: "Active checkpoint locations",
+      icon: <EnvironmentOutlined className="text-2xl text-purple-500" />,
+      color: "bg-purple-50 border-purple-200"
+    },
+    {
+      title: "Puzzles",
+      value: 16,
+      description: "Puzzle challenges created",
+      icon: <TrophyOutlined className="text-2xl text-orange-500" />,
+      color: "bg-orange-50 border-orange-200"
     }
-    fetchStats()
-    // eslint-disable-next-line
-  }, [])
+  ]
 
   const recentActivity = [
     { team: "Team Alpha", action: "Completed Checkpoint 3", time: "2 minutes ago", status: "success" },

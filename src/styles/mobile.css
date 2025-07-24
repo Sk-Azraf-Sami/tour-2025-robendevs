@@ -53,3 +53,100 @@
 .ant-drawer-content-wrapper {
   box-shadow: 2px 0 8px 0 rgba(29, 35, 41, 0.05);
 }
+
+/* QR Scanner mobile optimizations */
+@media (max-width: 767.98px) {
+  /* QR Scanner Modal adjustments */
+  .qr-scanner-modal .ant-modal-content {
+    margin: 10px !important;
+    height: calc(100vh - 20px) !important;
+    overflow-y: auto !important;
+  }
+  
+  .qr-scanner-modal .ant-modal-body {
+    padding: 16px !important;
+    height: calc(100% - 110px) !important;
+    overflow-y: auto !important;
+  }
+  
+  /* QR Reader responsive sizing */
+  #qr-reader {
+    max-width: 100% !important;
+  }
+  
+  #qr-reader video {
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: cover !important;
+  }
+  
+  /* Camera scanner adjustments */
+  #qr-reader canvas {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  
+  /* Touch-friendly buttons in QR scanner */
+  .ant-radio-button-wrapper {
+    min-height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  /* Input fields in scanner */
+  .ant-input-affix-wrapper, .ant-input {
+    min-height: 48px !important;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+  
+  /* Alert messages in scanner */
+  .ant-alert {
+    border-radius: 8px !important;
+  }
+  
+  .ant-alert-message {
+    font-size: 14px !important;
+  }
+  
+  .ant-alert-description {
+    font-size: 12px !important;
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 479.98px) {
+  .qr-scanner-modal .ant-modal-content {
+    margin: 5px !important;
+    height: calc(100vh - 10px) !important;
+  }
+  
+  .qr-scanner-modal .ant-modal-body {
+    padding: 12px !important;
+  }
+  
+  /* Smaller text for very small screens */
+  .qr-scanner-modal .ant-typography {
+    font-size: 13px !important;
+  }
+  
+  /* Compact spacing */
+  .qr-scanner-modal .space-y-3 > * + * {
+    margin-top: 8px !important;
+  }
+}
+
+/* QR Scanner landscape mode adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  .qr-scanner-modal .ant-modal-content {
+    height: 95vh !important;
+  }
+  
+  .qr-scanner-modal .ant-modal-body {
+    padding: 8px !important;
+  }
+  
+  #qr-reader {
+    min-height: 200px !important;
+  }
+}

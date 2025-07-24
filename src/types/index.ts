@@ -23,7 +23,9 @@ export interface Team {
   currentIndex: number;
   totalTime: number;
   totalPoints: number;
+  legs: TeamLeg[];  // REQUIRED: Detailed checkpoint progress tracking per PRD
   isActive: boolean;
+  gameStartTime?: number;
   createdAt?: string; 
   members: number
 }
@@ -34,6 +36,7 @@ export interface TeamLeg {
   endTime?: number;
   mcqPoints: number;
   timeBonus: number;
+  mcqAnswerOptionId?: string;
 }
 
 export interface MCQ {
@@ -43,17 +46,18 @@ export interface MCQ {
 }
 
 export interface MCQOption {
+  id?: string;
   text: string;
   value: number;
 }
 
 export interface Puzzle {
   id: string;
+  checkpoint: string;
   text: string;
   imageURL?: string;
   code: string;
-  checkpoint: string
-  isStarting: boolean
+  isStarting?: boolean;
 }
 
 export interface Admin {

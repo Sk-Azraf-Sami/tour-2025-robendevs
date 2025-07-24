@@ -9,6 +9,7 @@ import {
   onSnapshot,
   query,
   orderBy,
+  where,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 import type { GlobalSettings, Team, MCQ, Puzzle, Admin } from "../types";
@@ -113,6 +114,16 @@ export class FirestoreService {
       : null;
   }
 
+  static async getPuzzleByCheckpoint(checkpointId: string): Promise<Puzzle | null> {
+    const querySnapshot = await getDocs(
+      query(collection(db, "puzzles"), where("checkpoint", "==", checkpointId))
+    );
+    if (querySnapshot.empty) return null;
+    
+    const doc = querySnapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as Puzzle;
+  }
+
   static async createPuzzle(puzzle: Omit<Puzzle, "id">): Promise<string> {
     const docRef = doc(collection(db, "puzzles"));
     await setDoc(docRef, puzzle);
@@ -168,5 +179,41 @@ export class FirestoreService {
         : null;
       callback(team);
     });
+  }
+
+  // Helper methods for team game flow
+  static async getActiveTeams(): Promise<Team[]> {
+    const teams = await this.getAllTeams();
+    return teams.filter(team => team.isActive);
+  }
+
+  static async getTeamByUsername(username: string): Promise<Team | null> {
+    const teams = await this.getAllTeams();
+    const team = teams.find(team => team.username === username);
+    return team || null;
+  }
+
+  // Helper methods for random data selection
+  static async getRandomMCQ(): Promise<MCQ | null> {
+    const allMCQs = await this.getAllMCQs();
+    if (allMCQs.length === 0) return null;
+    
+    const randomIndex = Math.floor(Math.random() * allMCQs.length);
+    return allMCQs[randomIndex];
+  }
+
+  static async getPuzzlesByCheckpointIds(checkpointIds: string[]): Promise<(Puzzle | null)[]> {
+    const puzzles = await Promise.all(
+      checkpointIds.map(id => this.getPuzzle(id))
+    );
+    return puzzles;
+  }
+
+  // Batch update for team progress (useful for admin operations)
+  static async updateMultipleTeams(updates: Array<{teamId: string; data: Partial<Team>}>): Promise<void> {
+    const updatePromises = updates.map(update => 
+      this.updateTeam(update.teamId, update.data)
+    );
+    await Promise.all(updatePromises);
   }
 }
