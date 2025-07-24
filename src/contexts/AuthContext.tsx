@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { AuthContext, DUMMY_USERS, type User } from './auth'
+import { AuthContext, type User } from './auth'
+import { AuthService } from '../services/AuthService'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -17,24 +18,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true)
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    const foundUser = DUMMY_USERS.find(
-      u => u.email === email && u.password === password
-    )
-    
-    if (foundUser) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password, ...userWithoutPassword } = foundUser
-      setUser(userWithoutPassword)
-      localStorage.setItem('tour-2025-user', JSON.stringify(userWithoutPassword))
+    try {
+      // Try team login first (using username field from Firestore)
+      const team = await AuthService.loginTeam(email, password)
+      if (team) {
+        const userObj: User = {
+          id: team.id,
+          email: team.username, // teams use username field as email
+          name: team.username,
+          role: 'team'
+        }
+        setUser(userObj)
+        localStorage.setItem('tour-2025-user', JSON.stringify(userObj))
+        setIsLoading(false)
+        return true
+      }
+
+      // Try admin login
+      const admin = await AuthService.loginAdmin(email, password)
+      if (admin) {
+        const userObj: User = {
+          id: admin.id,
+          email: admin.username,
+          name: 'Admin',
+          role: 'admin'
+        }
+        setUser(userObj)
+        localStorage.setItem('tour-2025-user', JSON.stringify(userObj))
+        setIsLoading(false)
+        return true
+      }
+
       setIsLoading(false)
-      return true
+      return false
+    } catch (error) {
+      console.error('Login error:', error)
+      setIsLoading(false)
+      return false
     }
-    
-    setIsLoading(false)
-    return false
   }
 
   const logout = () => {
@@ -55,4 +76,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   )
 }
-

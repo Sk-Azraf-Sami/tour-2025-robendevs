@@ -10,8 +10,9 @@ export class AuthService {
       const teams = await FirestoreService.getAllTeams();
       const team = teams.find(t => 
         t.username === username && 
-        t.passwordHash === this.hashPassword(password)
+        t.passwordHash === password
       );
+      console.log(username, password);
       return team || null;
     } catch (error) {
       console.error('Team login error:', error);
