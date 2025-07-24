@@ -1,115 +1,57 @@
-import { useState } from 'react'
-import { Modal, Button, Alert, Spin } from 'antd'
-import { CloseOutlined, CameraOutlined } from '@ant-design/icons'
+import React, { useEffect } from "react";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 interface QRScannerProps {
-  onScan: (data: string) => void
-  onClose: () => void
+  onScanSuccess: (decodedText: string) => void;
+  onClose?: () => void;
 }
 
-export default function QRScanner({ onScan, onClose }: QRScannerProps) {
-  const [isScanning, setIsScanning] = useState(true)
-  const [error, setError] = useState('')
+const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) => {
+  useEffect(() => {
+    let scanner: Html5QrcodeScanner | null = null;
+    // Wait for the DOM to be ready before initializing the scanner
+    const timeout = setTimeout(() => {
+      if (document.getElementById("qr-reader")) {
+        scanner = new Html5QrcodeScanner(
+          "qr-reader",
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          false
+        );
+        scanner.render(
+          (decodedText: string) => {
+            onScanSuccess(decodedText);
+            if (onClose) onClose();
+          },
+          () => {
+            // Only log errors, don't spam UI
+          }
+        );
+      }
+    }, 100);
 
-  // DUMMY QR SCANNER - Replace with actual QR scanner library integration
-  // TODO: Integrate with react-qr-reader or similar library for real QR scanning
-  const handleMockScan = (code: string) => {
-    setTimeout(() => {
-      onScan(code)
-    }, 1000)
-  }
-
-  // Mock QR codes for different checkpoint scenarios
-  const mockQRCodes = [
-    { label: 'Valid Checkpoint Code', code: 'VALID-CODE-123' },
-    { label: 'Invalid Code (for testing)', code: 'INVALID-CODE-456' },
-    { label: 'Checkpoint CP3 Code', code: 'CP3-QR-CODE' },
-  ]
+    return () => {
+      clearTimeout(timeout);
+      if (scanner) {
+        scanner.clear().catch((error: unknown) => {
+          console.error("Failed to clear scanner:", error);
+        });
+      }
+    };
+  }, [onScanSuccess, onClose]);
 
   return (
-    <Modal
-      open={true}
-      onCancel={onClose}
-      footer={null}
-      title="Scan QR Code"
-      width="100%"
-      style={{ maxWidth: '400px', top: 20 }}
-      className="qr-scanner-modal"
-    >
-      <div className="text-center space-y-4">
-        {error && (
-          <Alert 
-            message="Scanner Error" 
-            description={error}
-            type="error" 
-            closable 
-            onClose={() => setError('')}
-          />
-        )}
-        
-        <div className="relative bg-gray-900 rounded-lg overflow-hidden" style={{ aspectRatio: '1' }}>
-          {isScanning ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-white space-y-4">
-                <CameraOutlined className="text-6xl" />
-                <div>
-                  <Spin size="large" />
-                  <p className="mt-2">Scanning for QR code...</p>
-                </div>
-              </div>
-              
-              {/* Scanner overlay */}
-              <div className="absolute inset-8 border-2 border-white rounded-lg opacity-50">
-                <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-blue-400"></div>
-                <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-blue-400"></div>
-                <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-blue-400"></div>
-                <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-blue-400"></div>
-              </div>
-            </div>
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-white">
-              <div className="text-center">
-                <p>Camera not available</p>
-                <Button onClick={() => setIsScanning(true)} className="mt-2">
-                  Retry
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-gray-600 text-sm">
-            Position the QR code within the frame to scan
-          </p>
-          
-          {/* Mock scan buttons for development */}
-          <div className="space-y-2">
-            {mockQRCodes.map((mock, index) => (
-              <Button 
-                key={index}
-                type="dashed" 
-                onClick={() => handleMockScan(mock.code)}
-                className="w-full text-xs"
-                size="small"
-              >
-                {mock.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <Button 
-            type="default" 
-            icon={<CloseOutlined />}
-            onClick={onClose}
-            className="flex-1"
-          >
-            Cancel
-          </Button>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
+      <div className="relative bg-white p-4 rounded shadow-lg">
+        <div id="qr-reader" style={{ width: "300px" }} />
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 text-gray-600 hover:text-black text-lg"
+        >
+          ✖
+        </button>
       </div>
-    </Modal>
-  )
-}
+    </div>
+  );
+};
+
+export default QRScanner;

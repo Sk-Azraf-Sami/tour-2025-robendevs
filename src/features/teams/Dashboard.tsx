@@ -128,7 +128,7 @@ export default function TeamDashboard() {
                 block
                 className="h-12 sm:h-auto text-sm sm:text-base"
               >
-                Scan QR Code
+                Scan QR Codeweeee
               </Button>
             </>
           ) : (
