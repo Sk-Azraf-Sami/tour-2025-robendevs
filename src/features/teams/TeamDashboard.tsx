@@ -380,7 +380,7 @@ export default function TeamDashboard() {
              */
             <PuzzleView 
               puzzle={progress.currentPuzzle}
-              onComplete={handlePuzzleComplete}
+              onProceedToScan={handlePuzzleComplete}
             />
           )}
         </Card>
