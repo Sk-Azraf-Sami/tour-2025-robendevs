@@ -1,0 +1,218 @@
+/* Enhanced Monitor.tsx Mobile-First Responsive Styles */
+
+.teams-monitor-table {
+  margin: 0;
+}
+
+.teams-monitor-table .ant-table-thead > tr > th {
+  background-color: #f8fafc;
+  font-weight: 600;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.teams-monitor-table .ant-table-tbody > tr > td {
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.team-details-drawer .ant-drawer-body {
+  padding: 16px;
+}
+
+.team-details-drawer .ant-card {
+  margin-bottom: 16px;
+}
+
+.team-details-drawer .ant-card-head {
+  padding: 0 12px;
+  min-height: 40px;
+}
+
+.team-details-drawer .ant-card-body {
+  padding: 12px;
+}
+
+.team-details-drawer .ant-descriptions-item-label {
+  font-weight: 600;
+  color: #374151;
+}
+
+.team-details-drawer .ant-timeline {
+  margin-top: 12px;
+}
+
+.team-details-drawer .ant-timeline-item {
+  padding-bottom: 16px;
+}
+
+/* Responsive Improvements */
+@media (max-width: 768px) {
+  .teams-monitor-table .ant-table-thead > tr > th,
+  .teams-monitor-table .ant-table-tbody > tr > td {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  
+  .team-details-drawer {
+    width: 100% !important;
+  }
+  
+  .team-details-drawer .ant-drawer-body {
+    padding: 12px;
+  }
+  
+  .team-details-drawer .ant-card-body {
+    padding: 8px;
+  }
+  
+  .team-details-drawer .ant-statistic {
+    text-align: center;
+  }
+  
+  .team-details-drawer .ant-statistic-title {
+    font-size: 11px;
+  }
+  
+  .team-details-drawer .ant-statistic-content {
+    font-size: 14px;
+  }
+}
+
+/* Status Badge Enhancements */
+.ant-badge-status-dot {
+  width: 8px;
+  height: 8px;
+}
+
+.ant-badge-status-text {
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+/* Progress Bar Enhancements */
+.ant-progress-line {
+  margin-bottom: 4px;
+}
+
+.ant-progress-text {
+  font-size: 11px;
+}
+
+/* Timeline Enhancements */
+.ant-timeline-item-head {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+}
+
+.ant-timeline-item-tail {
+  left: 5px;
+  border-left-width: 2px;
+}
+
+.ant-timeline-item-content {
+  left: 20px;
+  width: calc(100% - 20px);
+}
+
+/* Card Enhancements */
+.ant-card-small > .ant-card-head {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ant-card-small > .ant-card-body {
+  font-size: 12px;
+}
+
+/* Descriptions Enhancements */
+.ant-descriptions-small .ant-descriptions-item-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ant-descriptions-small .ant-descriptions-item-content {
+  font-size: 12px;
+}
+
+/* Tag Enhancements */
+.ant-tag {
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 1px 6px;
+  line-height: 16px;
+}
+
+/* Button Enhancements */
+.ant-btn-sm {
+  font-size: 11px;
+  height: 28px;
+  padding: 0 8px;
+}
+
+/* Table Scroll Enhancements */
+.teams-monitor-table .ant-table-body {
+  overflow-x: auto;
+}
+
+/* Live Update Indicators */
+.live-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: #52c41a;
+  border-radius: 50%;
+  margin-right: 6px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Stuck Team Warning */
+.stuck-team-warning {
+  background-color: #fff7e6;
+  border: 1px solid #ffd591;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+  color: #d46b08;
+}
+
+/* High Performance Team Indicator */
+.high-performance-team {
+  background: linear-gradient(90deg, #f6ffed 0%, #f6ffed 100%);
+  border-left: 3px solid #52c41a;
+}
+
+/* Custom scrollbar for drawer */
+.team-details-drawer .ant-drawer-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.team-details-drawer .ant-drawer-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.team-details-drawer .ant-drawer-body::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.team-details-drawer .ant-drawer-body::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}

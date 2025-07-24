@@ -26,6 +26,50 @@ interface MCQSubmissionResult {
   message: string;
 }
 
+interface TeamLegDetails {
+  mcqPoints: number;
+  puzzlePoints: number;
+  timeBonus: number;
+  timeTaken: number;
+  isCompleted: boolean;
+}
+
+interface LastCompletedCheckpoint {
+  checkpoint: string;
+  completedAt: string;
+  totalPoints: number;
+  timeTaken: number;
+}
+
+interface RoadmapProgress {
+  checkpoint: string;
+  index: number;
+  status: 'completed' | 'current' | 'upcoming';
+  points?: number;
+  timeTaken?: number;
+}
+
+interface TeamMonitoringData {
+  teamId: string;
+  username: string;
+  currentCheckpoint: string;
+  currentCheckpointName: string;
+  currentCheckpointStartTime?: string;
+  timeSinceLastScan?: number;
+  timeOnCurrentCheckpoint?: string;
+  completionPercentage: number;
+  totalPoints: number;
+  totalTime: number;
+  totalTimeFormatted: string;
+  isActive: boolean;
+  gameStartTime?: number;
+  gameStartTimeFormatted?: string;
+  status: 'not_started' | 'in_progress' | 'completed' | 'stuck';
+  currentLegDetails?: TeamLegDetails;
+  lastCompletedCheckpoint?: LastCompletedCheckpoint;
+  roadmapProgress: RoadmapProgress[];
+}
+
 export class GameService {
   static async startGame(): Promise<void> {
     const teams = await FirestoreService.getAllTeams();
@@ -661,25 +705,28 @@ export class GameService {
   }
 
   // Get real-time monitoring data for all teams (admin dashboard)
-  static async getAllTeamsMonitoringData(): Promise<Array<{
-    teamId: string;
-    username: string;
-    currentCheckpoint: string;
-    currentCheckpointStartTime?: string;
-    timeSinceLastScan?: number;
-    completionPercentage: number;
-    totalPoints: number;
-    totalTime: number;
-    isActive: boolean;
-    status: 'not_started' | 'in_progress' | 'completed' | 'stuck';
-  }>> {
+  static async getAllTeamsMonitoringData(): Promise<TeamMonitoringData[]> {
     const teams = await FirestoreService.getAllTeams();
     const currentTime = Date.now();
     
+    const formatTime = (seconds: number): string => {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      if (hours > 0) {
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      }
+      return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    };
+    
     return teams.map(team => {
-      const currentCheckpoint = team.currentIndex < team.legs.length 
-        ? team.legs[team.currentIndex].checkpoint 
+      const currentCheckpoint = team.currentIndex < team.roadmap.length 
+        ? team.roadmap[team.currentIndex]
         : 'completed';
+      
+      const currentCheckpointName = team.currentIndex < team.roadmap.length
+        ? `Checkpoint ${team.currentIndex + 1}: ${team.roadmap[team.currentIndex]}`
+        : 'Game Completed';
       
       const completionPercentage = team.roadmap.length > 0 
         ? Math.round((team.currentIndex / team.roadmap.length) * 100)
@@ -688,15 +735,60 @@ export class GameService {
       let status: 'not_started' | 'in_progress' | 'completed' | 'stuck';
       let currentCheckpointStartTime: string | undefined;
       let timeSinceLastScan: number | undefined;
+      let timeOnCurrentCheckpoint: string | undefined;
+      let currentLegDetails: TeamLegDetails | undefined = undefined;
+      let lastCompletedCheckpoint: LastCompletedCheckpoint | undefined = undefined;
+      
+      // Build roadmap progress
+      const roadmapProgress = team.roadmap.map((checkpointId, index) => {
+        const leg = team.legs[index];
+        let legStatus: 'completed' | 'current' | 'upcoming';
+        
+        if (index < team.currentIndex) {
+          legStatus = 'completed';
+        } else if (index === team.currentIndex) {
+          legStatus = 'current';
+        } else {
+          legStatus = 'upcoming';
+        }
+        
+        return {
+          checkpoint: checkpointId,
+          index: index + 1,
+          status: legStatus,
+          points: leg && leg.endTime ? leg.mcqPoints + leg.puzzlePoints + leg.timeBonus : undefined,
+          timeTaken: leg && leg.endTime ? leg.timeTaken : undefined
+        };
+      });
       
       if (completionPercentage === 100) {
         status = 'completed';
+        
+        // Get last completed checkpoint info
+        const lastLeg = team.legs[team.legs.length - 1];
+        if (lastLeg && lastLeg.endTime) {
+          lastCompletedCheckpoint = {
+            checkpoint: lastLeg.checkpoint,
+            completedAt: new Date(lastLeg.endTime).toLocaleString(),
+            totalPoints: lastLeg.mcqPoints + lastLeg.puzzlePoints + lastLeg.timeBonus,
+            timeTaken: lastLeg.timeTaken
+          };
+        }
       } else if (team.currentIndex < team.legs.length) {
         const currentLeg = team.legs[team.currentIndex];
-        if (currentLeg.startTime > 0) {
+        if (currentLeg && currentLeg.startTime > 0) {
           status = 'in_progress';
-          currentCheckpointStartTime = new Date(currentLeg.startTime).toISOString();
+          currentCheckpointStartTime = new Date(currentLeg.startTime).toLocaleString();
           timeSinceLastScan = Math.floor((currentTime - currentLeg.startTime) / 1000);
+          timeOnCurrentCheckpoint = formatTime(timeSinceLastScan);
+          
+          currentLegDetails = {
+            mcqPoints: currentLeg.mcqPoints,
+            puzzlePoints: currentLeg.puzzlePoints,
+            timeBonus: currentLeg.timeBonus,
+            timeTaken: currentLeg.timeTaken,
+            isCompleted: !!currentLeg.endTime
+          };
           
           // Mark as stuck if no progress for more than 15 minutes
           if (timeSinceLastScan > 900) {
@@ -705,21 +797,47 @@ export class GameService {
         } else {
           status = 'not_started';
         }
+        
+        // Get last completed checkpoint if any
+        if (team.currentIndex > 0) {
+          const prevLeg = team.legs[team.currentIndex - 1];
+          if (prevLeg && prevLeg.endTime) {
+            lastCompletedCheckpoint = {
+              checkpoint: prevLeg.checkpoint,
+              completedAt: new Date(prevLeg.endTime).toLocaleString(),
+              totalPoints: prevLeg.mcqPoints + prevLeg.puzzlePoints + prevLeg.timeBonus,
+              timeTaken: prevLeg.timeTaken
+            };
+          }
+        }
       } else {
         status = 'not_started';
       }
+      
+      // Calculate total elapsed time since game start
+      const totalTimeElapsed = team.gameStartTime 
+        ? Math.floor((currentTime - team.gameStartTime) / 1000)
+        : team.totalTime;
       
       return {
         teamId: team.id,
         username: team.username,
         currentCheckpoint,
+        currentCheckpointName,
         currentCheckpointStartTime,
         timeSinceLastScan,
+        timeOnCurrentCheckpoint,
         completionPercentage,
         totalPoints: team.totalPoints,
-        totalTime: team.totalTime,
+        totalTime: totalTimeElapsed,
+        totalTimeFormatted: formatTime(totalTimeElapsed),
         isActive: team.isActive,
-        status
+        gameStartTime: team.gameStartTime,
+        gameStartTimeFormatted: team.gameStartTime ? new Date(team.gameStartTime).toLocaleString() : undefined,
+        status,
+        currentLegDetails,
+        lastCompletedCheckpoint,
+        roadmapProgress
       };
     }).sort((a, b) => {
       // Sort by completion percentage desc, then by total points desc, then by total time asc
@@ -775,5 +893,65 @@ export class GameService {
     }
     
     console.log('=== END DEBUG ===');
+  }
+
+  // Admin control: Start game for all teams
+  static async startGameFromAdmin(): Promise<{ success: boolean; message: string; teamsActivated: number }> {
+    try {
+      await this.startGame();
+      const teams = await FirestoreService.getAllTeams();
+      return {
+        success: true,
+        message: `Game started successfully for ${teams.length} teams`,
+        teamsActivated: teams.length
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to start game',
+        teamsActivated: 0
+      };
+    }
+  }
+
+  // Admin control: Pause/Resume game
+  static async pauseResumeGame(pause: boolean): Promise<{ success: boolean; message: string }> {
+    try {
+      const teams = await FirestoreService.getAllTeams();
+      for (const team of teams) {
+        await FirestoreService.updateTeam(team.id, { isActive: !pause });
+      }
+      return {
+        success: true,
+        message: pause ? 'Game paused for all teams' : 'Game resumed for all teams'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to update game state'
+      };
+    }
+  }
+
+  // Admin control: Stop game
+  static async stopGame(): Promise<{ success: boolean; message: string }> {
+    try {
+      const teams = await FirestoreService.getAllTeams();
+      for (const team of teams) {
+        await FirestoreService.updateTeam(team.id, { 
+          isActive: false,
+          currentIndex: team.roadmap.length // Mark as completed
+        });
+      }
+      return {
+        success: true,
+        message: 'Game stopped for all teams'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to stop game'
+      };
+    }
   }
 }
