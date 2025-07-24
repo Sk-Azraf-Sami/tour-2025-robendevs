@@ -12,9 +12,10 @@ console.log('===========================================');
 
 // Mock settings that match the actual database structure
 const mockSettings = {
-  base_points: 20,          // Points for puzzle completion
-  bonus_per_minute: 5,      // Bonus for fast completion
-  penalty_points: 3         // Penalty for slow completion
+  base_points: 20,
+  bonus_per_minute: 5,
+  penalty_points: 3,
+  round_time: 5, // New configurable round time in minutes
 };
 
 // Mock MCQ options with points
@@ -34,9 +35,9 @@ function calculateCheckpointScore(mcqOptionId, timeSpentSeconds, isFirstCheckpoi
   if (isFirstCheckpoint) {
     return {
       mcqPoints: 0,
-      puzzlePoints: mockSettings.base_points,
+      puzzlePoints: 0, // First checkpoint gives 0 points as per PRD
       timeBonus: 0,
-      totalPoints: mockSettings.base_points,
+      totalPoints: 0, // First checkpoint always gives 0 points
       timeTaken: 0
     };
   }
@@ -48,19 +49,21 @@ function calculateCheckpointScore(mcqOptionId, timeSpentSeconds, isFirstCheckpoi
   // Base puzzle points
   const puzzlePoints = mockSettings.base_points;
   
-  // Time bonus/penalty calculation (per PRD requirements)
+  // Time bonus/penalty calculation using configurable round_time
   const timeSpentMinutes = Math.floor(timeSpentSeconds / 60);
+  const roundTimeMinutes = mockSettings.round_time;
+  const bonusThreshold = Math.max(1, Math.floor(roundTimeMinutes * 0.4)); // 40% of round time for bonus
   let timeBonus = 0;
   
-  if (timeSpentMinutes < 2) {
+  if (timeSpentMinutes < bonusThreshold) {
     // Fast completion bonus
-    timeBonus = mockSettings.bonus_per_minute * (2 - timeSpentMinutes);
-  } else if (timeSpentMinutes <= 5) {
+    timeBonus = mockSettings.bonus_per_minute * (bonusThreshold - timeSpentMinutes);
+  } else if (timeSpentMinutes <= roundTimeMinutes) {
     // Normal completion - no bonus/penalty
     timeBonus = 0;
   } else {
     // Slow completion penalty
-    const penaltyMinutes = timeSpentMinutes - 5;
+    const penaltyMinutes = timeSpentMinutes - roundTimeMinutes;
     timeBonus = -(penaltyMinutes * mockSettings.penalty_points);
   }
   

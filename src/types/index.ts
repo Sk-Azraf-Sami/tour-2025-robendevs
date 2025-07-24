@@ -7,6 +7,7 @@ export interface GlobalSettings {
   max_teams: number;
   max_participants: number;
   game_duration: number;
+  round_time: number; // Time in minutes for each checkpoint before penalty applies
   gameName: string;
   enable_hints: boolean;
   enable_timer: boolean;

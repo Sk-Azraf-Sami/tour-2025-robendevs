@@ -180,22 +180,26 @@ export class GameService {
       // First scan of this checkpoint - record start time
       currentLeg.startTime = currentTime;
       
-      // Special handling for first checkpoint (cp_0) - no MCQ, immediate completion
+      // Special handling for first checkpoint (cp_0) - no MCQ, immediate completion, 0 points
       if (currentLeg.isFirstCheckpoint) {
-        const settings = await FirestoreService.getGlobalSettings();
-        if (settings) {
-          currentLeg.endTime = currentTime; // Same as start time for first checkpoint
-          currentLeg.timeTaken = 0; // No time taken for first checkpoint
-          currentLeg.puzzlePoints = settings.base_points; // Base points for puzzle completion
-          currentLeg.mcqPoints = 0; // No MCQ points for first checkpoint
-          currentLeg.timeBonus = 0; // No time bonus for instant completion
-        }
+        currentLeg.endTime = currentTime; // Same as start time for first checkpoint
+        currentLeg.timeTaken = 0; // No time taken for first checkpoint
+        currentLeg.puzzlePoints = 0; // No points for first checkpoint as per requirements
+        currentLeg.mcqPoints = 0; // No MCQ points for first checkpoint
+        currentLeg.timeBonus = 0; // No time bonus for instant completion
         
         // Update team progress immediately for first checkpoint
         const newCurrentIndex = team.currentIndex + 1;
         const isGameComplete = newCurrentIndex >= team.roadmap.length;
-        const pointsEarned = currentLeg.puzzlePoints;
-        const newTotalPoints = team.totalPoints + pointsEarned;
+        const newTotalPoints = team.totalPoints; // No points added for first checkpoint
+        
+        // Set start time for next checkpoint when moving from first to second
+        if (!isGameComplete && newCurrentIndex < updatedLegs.length) {
+          const nextLeg = updatedLegs[newCurrentIndex];
+          if (nextLeg && nextLeg.startTime === 0) {
+            nextLeg.startTime = currentTime; // Start timing for second checkpoint immediately
+          }
+        }
         
         await FirestoreService.updateTeam(teamId, {
           legs: updatedLegs,
@@ -207,7 +211,7 @@ export class GameService {
         if (isGameComplete) {
           return { 
             success: true, 
-            message: `Game completed! You earned ${pointsEarned} points at the first checkpoint. Total: ${newTotalPoints} points!` 
+            message: `Game completed! First checkpoint gives no points. Total: ${newTotalPoints} points!` 
           };
         } else {
           // Get next puzzle for the team
@@ -215,7 +219,7 @@ export class GameService {
           const nextPuzzle = await FirestoreService.getPuzzle(nextPuzzleId);
           return { 
             success: true, 
-            message: `First checkpoint completed! You earned ${pointsEarned} points. Find the next checkpoint using this puzzle clue.`,
+            message: `First checkpoint completed! No points awarded for the starting checkpoint. Find the next checkpoint using this puzzle clue.`,
             mcq: undefined, // No MCQ for first checkpoint
             puzzle: nextPuzzle || undefined
           };
@@ -315,26 +319,30 @@ export class GameService {
       };
     }
 
-    // Calculate time bonus/penalty based on PRD specifications
+    // Calculate time bonus/penalty based on PRD specifications and round_time setting
     const currentTime = Date.now();
     const legStartTime = currentLeg?.startTime || currentTime;
     const timeSpentSeconds = Math.floor((currentTime - legStartTime) / 1000);
     const timeSpentMinutes = Math.floor(timeSpentSeconds / 60);
     
-    // Time bonus calculation following PRD requirements
+    // Use round_time from settings for threshold calculations
+    const roundTimeMinutes = settings.round_time || 5; // Default to 5 minutes if not set
+    const bonusThreshold = Math.max(1, Math.floor(roundTimeMinutes * 0.6)); // 60% of round time for bonus
+    
+    // Time bonus calculation following PRD requirements with configurable round time
     let timeBonus = 0;
     
-    // Quick completion bonus (under 2 minutes gets bonus)
-    if (timeSpentMinutes < 2) {
-      timeBonus = settings.bonus_per_minute * (2 - timeSpentMinutes);
+    // Quick completion bonus (under bonus threshold gets bonus)
+    if (timeSpentMinutes < bonusThreshold) {
+      timeBonus = settings.bonus_per_minute * (bonusThreshold - timeSpentMinutes);
     }
-    // Normal completion (2-5 minutes) gets no bonus/penalty  
-    else if (timeSpentMinutes <= 5) {
+    // Normal completion (within round time) gets no bonus/penalty  
+    else if (timeSpentMinutes <= roundTimeMinutes) {
       timeBonus = 0;
     }
-    // Slow completion penalty (over 5 minutes gets penalty)
+    // Slow completion penalty (over round time gets penalty)
     else {
-      const penaltyMinutes = timeSpentMinutes - 5;
+      const penaltyMinutes = timeSpentMinutes - roundTimeMinutes;
       timeBonus = -(penaltyMinutes * settings.penalty_points);
     }
     
@@ -361,6 +369,14 @@ export class GameService {
     const newCurrentIndex = team.currentIndex + 1;
     const isGameComplete = newCurrentIndex >= team.roadmap.length;
     const newTotalPoints = team.totalPoints + totalPointsEarned;
+    
+    // Set start time for next checkpoint if not game complete
+    if (!isGameComplete && newCurrentIndex < updatedLegs.length) {
+      const nextLeg = updatedLegs[newCurrentIndex];
+      if (nextLeg && nextLeg.startTime === 0) {
+        nextLeg.startTime = currentTime; // Start timing for next checkpoint
+      }
+    }
     
     // Update total time to current elapsed time in seconds
     const gameStartTime = team.gameStartTime || currentTime;
@@ -1103,5 +1119,207 @@ export class GameService {
         teamsReset: 0
       };
     }
+  }
+
+  /**
+   * Debug timing issues for a specific team
+   * Helps identify missing start/end times and timing inconsistencies
+   */
+  static async debugTeamTiming(teamId: string): Promise<{
+    teamId: string;
+    currentStatus: string;
+    timingIssues: string[];
+    legs: Array<{
+      index: number;
+      checkpoint: string;
+      startTime: number;
+      endTime: number | undefined;
+      timeTaken: number;
+      mcqPoints: number;
+      puzzlePoints: number;
+      timeBonus: number;
+      isFirstCheckpoint: boolean;
+      status: string;
+    }>;
+    recommendations: string[];
+  }> {
+    const team = await FirestoreService.getTeam(teamId);
+    if (!team) {
+      return {
+        teamId,
+        currentStatus: 'Team not found',
+        timingIssues: ['Team does not exist in database'],
+        legs: [],
+        recommendations: ['Verify team ID is correct']
+      };
+    }
+
+    const timingIssues: string[] = [];
+    const recommendations: string[] = [];
+    let currentStatus = 'Unknown';
+
+    // Analyze current status
+    if (!team.isActive) {
+      currentStatus = 'Inactive';
+    } else if (team.currentIndex >= team.roadmap.length) {
+      currentStatus = 'Game Completed';
+    } else if (team.currentIndex === 0) {
+      currentStatus = 'At Starting Checkpoint';
+    } else {
+      currentStatus = `On Checkpoint ${team.currentIndex + 1} of ${team.roadmap.length}`;
+    }
+
+    // Check timing data for each leg
+    team.legs.forEach((leg, index) => {
+      const checkpointLabel = `Checkpoint ${index} (${leg.checkpoint})`;
+      
+      if (leg.isFirstCheckpoint) {
+        // First checkpoint should have all 0s
+        if (leg.startTime === 0 && leg.endTime === 0 && leg.timeTaken === 0 &&
+            leg.mcqPoints === 0 && leg.puzzlePoints === 0 && leg.timeBonus === 0) {
+          // This is correct for first checkpoint
+        } else {
+          timingIssues.push(`${checkpointLabel}: First checkpoint should have all timing/points = 0`);
+          recommendations.push('Reset first checkpoint data to all 0s');
+        }
+      } else {
+        // Regular checkpoints - check for timing issues
+        if (index < team.currentIndex) {
+          // Completed checkpoint should have timing data
+          if (leg.startTime === 0) {
+            timingIssues.push(`${checkpointLabel}: Missing start time for completed checkpoint`);
+            recommendations.push(`Set start time for ${checkpointLabel}`);
+          }
+          if (leg.endTime === 0) {
+            timingIssues.push(`${checkpointLabel}: Missing end time for completed checkpoint`);
+            recommendations.push(`Set end time for ${checkpointLabel}`);
+          }
+          if (leg.timeTaken === 0 && leg.startTime > 0 && (leg.endTime || 0) > 0) {
+            timingIssues.push(`${checkpointLabel}: Time taken not calculated properly`);
+            recommendations.push(`Recalculate timeTaken = (endTime - startTime) / 1000`);
+          }
+        } else if (index === team.currentIndex) {
+          // Current checkpoint - check partial timing
+          if (leg.startTime > 0 && leg.endTime === 0) {
+            // Team is currently on this checkpoint (QR scanned but MCQ not answered)
+            const timeOnCheckpoint = Math.floor((Date.now() - leg.startTime) / 1000 / 60);
+            if (timeOnCheckpoint > 15) {
+              timingIssues.push(`${checkpointLabel}: Team stuck for ${timeOnCheckpoint} minutes`);
+              recommendations.push('Check if team needs assistance');
+            }
+          } else if (leg.startTime === 0) {
+            // Team hasn't started this checkpoint yet (expected)
+          }
+        } else {
+          // Future checkpoint should have no timing data
+          if (leg.startTime > 0 || (leg.endTime || 0) > 0) {
+            timingIssues.push(`${checkpointLabel}: Future checkpoint has timing data`);
+            recommendations.push('Reset timing data for future checkpoints');
+          }
+        }
+      }
+    });
+
+    // Check for missing gameStartTime
+    if (!team.gameStartTime) {
+      timingIssues.push('Missing game start time');
+      recommendations.push('Set gameStartTime when admin starts the game');
+    }
+
+    // Overall timing consistency
+    if (team.legs.length !== team.roadmap.length) {
+      timingIssues.push(`Legs count (${team.legs.length}) doesn't match roadmap length (${team.roadmap.length})`);
+      recommendations.push('Reinitialize legs array to match roadmap');
+    }
+
+    return {
+      teamId,
+      currentStatus,
+      timingIssues,
+      legs: team.legs.map((leg, index) => ({
+        index,
+        checkpoint: leg.checkpoint,
+        startTime: leg.startTime,
+        endTime: leg.endTime,
+        timeTaken: leg.timeTaken,
+        mcqPoints: leg.mcqPoints,
+        puzzlePoints: leg.puzzlePoints,
+        timeBonus: leg.timeBonus,
+        isFirstCheckpoint: leg.isFirstCheckpoint,
+        status: index < team.currentIndex ? 'completed' : 
+                index === team.currentIndex ? 'current' : 'future'
+      })),
+      recommendations
+    };
+  }
+
+  /**
+   * Get timing statistics for admin monitoring
+   */
+  static async getTimingStatistics(): Promise<{
+    totalTeams: number;
+    activeTeams: number;
+    completedTeams: number;
+    stuckTeams: { teamId: string; stuckMinutes: number; checkpoint: string }[];
+    averageTimePerCheckpoint: { [checkpoint: string]: number };
+  }> {
+    const teams = await FirestoreService.getAllTeams();
+    const stuckTeams: { teamId: string; stuckMinutes: number; checkpoint: string }[] = [];
+    const checkpointTimes: { [checkpoint: string]: number[] } = {};
+    
+    let activeTeams = 0;
+    let completedTeams = 0;
+    const currentTime = Date.now();
+
+    for (const team of teams) {
+      if (!team.isActive) continue;
+      
+      if (team.currentIndex >= team.roadmap.length) {
+        completedTeams++;
+        continue;
+      }
+      
+      activeTeams++;
+      
+      // Check for stuck teams
+      const currentLeg = team.legs[team.currentIndex];
+      if (currentLeg && currentLeg.startTime > 0 && currentLeg.endTime === 0) {
+        const stuckMinutes = Math.floor((currentTime - currentLeg.startTime) / 1000 / 60);
+        if (stuckMinutes > 15) {
+          stuckTeams.push({
+            teamId: team.id,
+            stuckMinutes,
+            checkpoint: currentLeg.checkpoint
+          });
+        }
+      }
+      
+      // Collect timing data for completed checkpoints
+      team.legs.forEach((leg, index) => {
+        if (index < team.currentIndex && leg.timeTaken > 0 && !leg.isFirstCheckpoint) {
+          if (!checkpointTimes[leg.checkpoint]) {
+            checkpointTimes[leg.checkpoint] = [];
+          }
+          checkpointTimes[leg.checkpoint].push(leg.timeTaken);
+        }
+      });
+    }
+
+    // Calculate averages
+    const averageTimePerCheckpoint: { [checkpoint: string]: number } = {};
+    Object.keys(checkpointTimes).forEach(checkpoint => {
+      const times = checkpointTimes[checkpoint];
+      averageTimePerCheckpoint[checkpoint] = Math.round(
+        times.reduce((sum, time) => sum + time, 0) / times.length
+      );
+    });
+
+    return {
+      totalTeams: teams.length,
+      activeTeams,
+      completedTeams,
+      stuckTeams: stuckTeams.sort((a, b) => b.stuckMinutes - a.stuckMinutes),
+      averageTimePerCheckpoint
+    };
   }
 }
