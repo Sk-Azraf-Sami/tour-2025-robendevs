@@ -898,14 +898,66 @@ export class GameService {
   // Admin control: Start game for all teams
   static async startGameFromAdmin(): Promise<{ success: boolean; message: string; teamsActivated: number }> {
     try {
-      await this.startGame();
       const teams = await FirestoreService.getAllTeams();
+      const settings = await FirestoreService.getGlobalSettings();
+      
+      if (!settings) {
+        throw new Error('Global settings not found. Please configure game settings first.');
+      }
+
+      if (teams.length === 0) {
+        throw new Error('No teams found. Please create teams before starting the game.');
+      }
+
+      // Validate that all teams have roadmaps
+      const teamsWithoutRoadmaps = teams.filter(team => !team.roadmap || team.roadmap.length === 0);
+      if (teamsWithoutRoadmaps.length > 0) {
+        throw new Error(`${teamsWithoutRoadmaps.length} teams don't have roadmaps configured. Please ensure all teams have valid roadmaps.`);
+      }
+
+      const gameStartTime = Date.now();
+      let teamsActivated = 0;
+
+      // Initialize and activate all teams
+      for (const team of teams) {
+        // Initialize legs array if not exists or empty
+        let legs = team.legs || [];
+        
+        if (legs.length === 0 && team.roadmap && team.roadmap.length > 0) {
+          // Create legs for each checkpoint in the roadmap
+          legs = team.roadmap.map((puzzleId, index) => ({
+            puzzleId,
+            checkpoint: puzzleId,
+            startTime: 0,
+            endTime: 0,
+            mcqPoints: 0,
+            puzzlePoints: 0,
+            timeBonus: 0,
+            timeTaken: 0,
+            mcqAnswerOptionId: undefined,
+            isFirstCheckpoint: index === 0
+          }));
+        }
+
+        // Update team with game start data
+        await FirestoreService.updateTeam(team.id, {
+          isActive: true,
+          gameStartTime,
+          currentIndex: 0,
+          totalTime: 0,
+          legs
+        });
+        
+        teamsActivated++;
+      }
+
       return {
         success: true,
-        message: `Game started successfully for ${teams.length} teams`,
-        teamsActivated: teams.length
+        message: `Game started successfully! ${teamsActivated} teams are now active and ready to play.`,
+        teamsActivated
       };
     } catch (error) {
+      console.error('Start game error:', error);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to start game',
@@ -918,14 +970,33 @@ export class GameService {
   static async pauseResumeGame(pause: boolean): Promise<{ success: boolean; message: string }> {
     try {
       const teams = await FirestoreService.getAllTeams();
-      for (const team of teams) {
-        await FirestoreService.updateTeam(team.id, { isActive: !pause });
+      
+      if (teams.length === 0) {
+        throw new Error('No teams found to pause/resume.');
       }
+
+      let updatedTeams = 0;
+      
+      for (const team of teams) {
+        // Only update teams that have started the game
+        if (team.gameStartTime && team.gameStartTime > 0) {
+          await FirestoreService.updateTeam(team.id, { isActive: !pause });
+          updatedTeams++;
+        }
+      }
+
+      if (updatedTeams === 0) {
+        throw new Error('No active teams found to pause/resume. Start the game first.');
+      }
+
       return {
         success: true,
-        message: pause ? 'Game paused for all teams' : 'Game resumed for all teams'
+        message: pause 
+          ? `Game paused for ${updatedTeams} teams. Teams can no longer progress until resumed.` 
+          : `Game resumed for ${updatedTeams} teams. Teams can now continue playing.`
       };
     } catch (error) {
+      console.error('Pause/Resume game error:', error);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to update game state'
@@ -937,20 +1008,99 @@ export class GameService {
   static async stopGame(): Promise<{ success: boolean; message: string }> {
     try {
       const teams = await FirestoreService.getAllTeams();
-      for (const team of teams) {
-        await FirestoreService.updateTeam(team.id, { 
-          isActive: false,
-          currentIndex: team.roadmap.length // Mark as completed
-        });
+      
+      if (teams.length === 0) {
+        throw new Error('No teams found to stop.');
       }
+
+      let stoppedTeams = 0;
+      
+      for (const team of teams) {
+        // Only stop teams that have actually started
+        if (team.gameStartTime && team.gameStartTime > 0) {
+          await FirestoreService.updateTeam(team.id, { 
+            isActive: false
+            // Note: We don't mark as completed (currentIndex = roadmap.length) 
+            // because that would indicate they finished normally
+          });
+          stoppedTeams++;
+        }
+      }
+
+      if (stoppedTeams === 0) {
+        return {
+          success: true,
+          message: 'No active games found to stop.'
+        };
+      }
+
       return {
         success: true,
-        message: 'Game stopped for all teams'
+        message: `Game stopped for ${stoppedTeams} teams. All team progress has been preserved.`
       };
     } catch (error) {
+      console.error('Stop game error:', error);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to stop game'
+      };
+    }
+  }
+
+  // Admin control: Reset game progress for all teams
+  static async resetGame(): Promise<{ success: boolean; message: string; teamsReset: number }> {
+    try {
+      const teams = await FirestoreService.getAllTeams();
+      const settings = await FirestoreService.getGlobalSettings();
+      
+      if (!settings) {
+        throw new Error('Global settings not found');
+      }
+
+      let teamsReset = 0;
+      
+      for (const team of teams) {
+        // Reset team progress completely
+        const resetData = {
+          currentIndex: 0,
+          totalPoints: 0,
+          totalTime: 0,
+          isActive: false,
+          gameStartTime: 0,
+          legs: [] as TeamLeg[]
+        };
+
+        // Initialize empty legs array for all checkpoints
+        if (team.roadmap && team.roadmap.length > 0) {
+          resetData.legs = team.roadmap.map((puzzleId, index) => ({
+            puzzleId,
+            checkpoint: puzzleId,
+            startTime: 0,
+            endTime: 0,
+            mcqPoints: 0,
+            puzzlePoints: 0,
+            timeBonus: 0,
+            timeTaken: 0,
+            mcqAnswerOptionId: undefined,
+            isFirstCheckpoint: index === 0
+          }));
+        }
+
+        await FirestoreService.updateTeam(team.id, resetData);
+        teamsReset++;
+      }
+
+      return {
+        success: true,
+        message: `Game progress reset for ${teamsReset} teams. Ready to start fresh.`,
+        teamsReset
+      };
+    } catch (error) {
+      console.error('Reset game error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to reset game',
+        teamsReset: 0
       };
     }
   }

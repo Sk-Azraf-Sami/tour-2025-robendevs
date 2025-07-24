@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Typography, Row, Col, Table, Badge, Progress, Button, Space, Tag, Drawer, Descriptions, message, Timeline, Statistic } from 'antd'
+import { Card, Typography, Row, Col, Table, Badge, Progress, Button, Space, Tag, Drawer, Descriptions, message, Timeline, Statistic, Modal, Input } from 'antd'
 import { 
   MonitorOutlined, 
   PlayCircleOutlined, 
@@ -11,7 +11,9 @@ import {
   ClockCircleOutlined,
   TrophyOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  WarningOutlined,
+  RedoOutlined
 } from '@ant-design/icons'
 import { GameService } from '../../services/GameService'
 import { FirestoreService } from '../../services/FireStoreService'
@@ -141,7 +143,71 @@ export default function Monitor() {
     }
   }, [])
 
-  const handleGameControl = async (action: 'start' | 'pause' | 'resume' | 'stop') => {
+  const handleGameControl = async (action: 'start' | 'pause' | 'resume' | 'stop' | 'reset') => {
+    // Double confirmation for reset action
+    if (action === 'reset') {
+      Modal.confirm({
+        title: 'Reset Game Progress',
+        icon: <ExclamationCircleOutlined />,
+        content: (
+          <div>
+            <p><strong>⚠️ WARNING: This action cannot be undone!</strong></p>
+            <p>This will:</p>
+            <ul style={{ marginLeft: '20px', marginTop: '10px' }}>
+              <li>Reset all team progress to 0</li>
+              <li>Clear all checkpoint completions</li>
+              <li>Reset all points and times</li>
+              <li>Stop the current game</li>
+            </ul>
+            <p style={{ marginTop: '15px', color: '#ff4d4f' }}>
+              Are you absolutely sure you want to reset the entire game?
+            </p>
+          </div>
+        ),
+        okText: 'Yes, Reset Game',
+        okType: 'danger',
+        cancelText: 'Cancel',
+        onOk() {
+          // Second confirmation with text input
+          let confirmationInput = '';
+          
+          Modal.confirm({
+            title: 'Final Confirmation Required',
+            icon: <WarningOutlined style={{ color: '#ff4d4f' }} />,
+            content: (
+              <div>
+                <p><strong>🚨 FINAL WARNING</strong></p>
+                <p>You are about to permanently delete all game progress for <strong>{teams.length} teams</strong>.</p>
+                <p style={{ marginTop: '15px' }}>To confirm this action, please type <strong>"RESET GAME"</strong> in the field below:</p>
+                <Input 
+                  placeholder="Type 'RESET GAME' to confirm"
+                  onChange={(e) => { confirmationInput = e.target.value; }}
+                  style={{ marginTop: '10px' }}
+                />
+              </div>
+            ),
+            okText: 'Confirm Reset',
+            okType: 'danger',
+            cancelText: 'Cancel',
+            onOk() {
+              if (confirmationInput.toUpperCase() === 'RESET GAME') {
+                executeGameControl('reset');
+              } else {
+                message.error('Confirmation text does not match. Reset cancelled.');
+                return Promise.reject('Confirmation failed');
+              }
+            }
+          });
+        }
+      });
+      return;
+    }
+
+    // For other actions, execute directly
+    executeGameControl(action);
+  };
+
+  const executeGameControl = async (action: 'start' | 'pause' | 'resume' | 'stop' | 'reset') => {
     setActionLoading(action)
     try {
       let result: { success: boolean; message: string }
@@ -158,6 +224,9 @@ export default function Monitor() {
           break
         case 'stop':
           result = await GameService.stopGame()
+          break
+        case 'reset':
+          result = await GameService.resetGame()
           break
         default:
           result = { success: false, message: 'Unknown action' }
@@ -404,16 +473,28 @@ export default function Monitor() {
           <Col xs={24} sm={12}>
             <Space direction="horizontal" className="flex flex-wrap justify-center sm:justify-start">
               {gameStatus.status === 'waiting' && (
-                <Button 
-                  type="primary" 
-                  icon={<PlayCircleOutlined />}
-                  onClick={() => handleGameControl('start')}
-                  size="small"
-                  loading={actionLoading === 'start'}
-                  className="text-xs sm:text-sm"
-                >
-                  Start Game
-                </Button>
+                <>
+                  <Button 
+                    type="primary" 
+                    icon={<PlayCircleOutlined />}
+                    onClick={() => handleGameControl('start')}
+                    size="small"
+                    loading={actionLoading === 'start'}
+                    className="text-xs sm:text-sm"
+                  >
+                    Start Game
+                  </Button>
+                  <Button 
+                    danger 
+                    icon={<RedoOutlined />}
+                    onClick={() => handleGameControl('reset')}
+                    size="small"
+                    loading={actionLoading === 'reset'}
+                    className="text-xs sm:text-sm"
+                  >
+                    <span className="hidden sm:inline">Reset</span>
+                  </Button>
+                </>
               )}
               {gameStatus.status === 'active' && (
                 <>
@@ -435,6 +516,17 @@ export default function Monitor() {
                     className="text-xs sm:text-sm"
                   >
                     <span className="hidden sm:inline">Stop</span>
+                  </Button>
+                  <Button 
+                    danger 
+                    type="text"
+                    icon={<RedoOutlined />}
+                    onClick={() => handleGameControl('reset')}
+                    size="small"
+                    loading={actionLoading === 'reset'}
+                    className="text-xs sm:text-sm"
+                  >
+                    <span className="hidden sm:inline">Reset</span>
                   </Button>
                 </>
               )}
@@ -460,7 +552,30 @@ export default function Monitor() {
                   >
                     <span className="hidden sm:inline">Stop</span>
                   </Button>
+                  <Button 
+                    danger 
+                    type="text"
+                    icon={<RedoOutlined />}
+                    onClick={() => handleGameControl('reset')}
+                    size="small"
+                    loading={actionLoading === 'reset'}
+                    className="text-xs sm:text-sm"
+                  >
+                    <span className="hidden sm:inline">Reset</span>
+                  </Button>
                 </>
+              )}
+              {(gameStatus.status === 'completed' || gameStatus.status === 'waiting') && gameStatus.totalTeams > 0 && (
+                <Button 
+                  danger 
+                  icon={<RedoOutlined />}
+                  onClick={() => handleGameControl('reset')}
+                  size="small"
+                  loading={actionLoading === 'reset'}
+                  className="text-xs sm:text-sm"
+                >
+                  <span className="hidden sm:inline">Reset Game</span>
+                </Button>
               )}
             </Space>
           </Col>
