@@ -83,19 +83,19 @@ export class GameService {
       return { success: false, message: 'Game completed - no more checkpoints' };
     }
 
-    const currentCheckpointId = team.roadmap[team.currentIndex];
+    const currentPuzzleId = team.roadmap[team.currentIndex];
     
-    // Find the puzzle that belongs to this checkpoint using efficient query
-    const currentPuzzle = await FirestoreService.getPuzzleByCheckpoint(currentCheckpointId);
+    // Get the puzzle directly by its ID (since roadmap contains puzzle IDs)
+    const currentPuzzle = await FirestoreService.getPuzzle(currentPuzzleId);
     
     if (!currentPuzzle) {
-      return { success: false, message: `Current checkpoint puzzle not found for ${currentCheckpointId}` };
+      return { success: false, message: `Current puzzle not found for ID: ${currentPuzzleId}` };
     }
 
     if (currentPuzzle.code !== qrCode) {
       return { 
         success: false, 
-        message: `Wrong checkpoint! You need to find checkpoint ${currentCheckpointId}. This QR code belongs to a different checkpoint.` 
+        message: `Wrong QR code! You need to find the QR code: "${currentPuzzle.code}". This QR code belongs to a different puzzle.` 
       };
     }
 
@@ -112,7 +112,7 @@ export class GameService {
     const updatedLegs = [...team.legs];
     if (!updatedLegs[team.currentIndex]) {
       updatedLegs[team.currentIndex] = {
-        checkpointId: currentCheckpointId,
+        checkpointId: currentPuzzleId,
         startTime: legStartTime,
         mcqPoints: 0,
         timeBonus: 0
@@ -148,10 +148,10 @@ export class GameService {
       };
     }
 
-    const currentCheckpointId = team.roadmap[team.currentIndex];
+    const currentPuzzleId = team.roadmap[team.currentIndex];
     
-    // Find the puzzle that belongs to this checkpoint using efficient query
-    const currentPuzzle = await FirestoreService.getPuzzleByCheckpoint(currentCheckpointId);
+    // Get the puzzle directly by its ID (since roadmap contains puzzle IDs)
+    const currentPuzzle = await FirestoreService.getPuzzle(currentPuzzleId);
     
     if (!currentPuzzle || currentPuzzle.code !== qrCode) {
       return { 
@@ -159,7 +159,7 @@ export class GameService {
         isGameComplete: false, 
         pointsEarned: 0, 
         timeBonus: 0, 
-        message: 'Invalid QR code for current checkpoint' 
+        message: 'Invalid QR code for current puzzle' 
       };
     }
 
@@ -256,8 +256,8 @@ export class GameService {
 
     let nextPuzzle: Puzzle | undefined;
     if (!isGameComplete) {
-      const nextCheckpointId = team.roadmap[newCurrentIndex];
-      nextPuzzle = await FirestoreService.getPuzzleByCheckpoint(nextCheckpointId) || undefined;
+      const nextPuzzleId = team.roadmap[newCurrentIndex];
+      nextPuzzle = await FirestoreService.getPuzzle(nextPuzzleId) || undefined;
     }
 
     return {
@@ -272,8 +272,8 @@ export class GameService {
     };
   }
 
-  static async getPuzzleForCheckpoint(checkpointId: string): Promise<Puzzle | null> {
-    return await FirestoreService.getPuzzleByCheckpoint(checkpointId);
+  static async getPuzzleForCheckpoint(puzzleId: string): Promise<Puzzle | null> {
+    return await FirestoreService.getPuzzle(puzzleId);
   }
 
   static async getMCQForCheckpoint(): Promise<MCQ | null> {
@@ -289,11 +289,11 @@ export class GameService {
     const team = await FirestoreService.getTeam(teamId);
     if (!team || team.currentIndex >= team.roadmap.length) return null;
     
-    const currentCheckpointId = team.roadmap[team.currentIndex];
-    const puzzle = await FirestoreService.getPuzzleByCheckpoint(currentCheckpointId);
+    const currentPuzzleId = team.roadmap[team.currentIndex];
+    const puzzle = await FirestoreService.getPuzzle(currentPuzzleId);
     
     return {
-      checkpointId: currentCheckpointId,
+      checkpointId: currentPuzzleId,
       puzzle
     };
   }
@@ -306,8 +306,8 @@ export class GameService {
     const nextIndex = team.currentIndex + 1;
     if (nextIndex >= team.roadmap.length) return null; // Game complete
     
-    const nextCheckpointId = team.roadmap[nextIndex];
-    return await FirestoreService.getPuzzleByCheckpoint(nextCheckpointId);
+    const nextPuzzleId = team.roadmap[nextIndex];
+    return await FirestoreService.getPuzzle(nextPuzzleId);
   }
 
   static async initializeTeamRoadmap(teamId: string): Promise<void> {

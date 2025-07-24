@@ -90,19 +90,20 @@ Role: ${user.role}`);
     log(`📱 QR Code to test: "${qrCode}"`);
     
     try {
-      // First, let's see what the team's current checkpoint should be
+      // First, let's see what the team's current puzzle should be
       const teamData = await FirestoreService.getTeam(user.id);
       if (teamData) {
-        const currentCheckpointId = teamData.roadmap[teamData.currentIndex];
-        log(`🎯 Team's current checkpoint: ${currentCheckpointId} (index ${teamData.currentIndex})`);
+        const currentPuzzleId = teamData.roadmap[teamData.currentIndex];
+        log(`🎯 Team's current puzzle ID: ${currentPuzzleId} (index ${teamData.currentIndex})`);
         
-        // Get the puzzle for this checkpoint to see what the correct code should be
-        const currentPuzzle = await FirestoreService.getPuzzleByCheckpoint(currentCheckpointId);
+        // Get the puzzle for this ID to see what the correct code should be
+        const currentPuzzle = await FirestoreService.getPuzzle(currentPuzzleId);
         if (currentPuzzle) {
-          log(`✅ Expected QR code for current checkpoint: "${currentPuzzle.code}"`);
+          log(`✅ Expected QR code for current puzzle: "${currentPuzzle.code}"`);
           log(`📝 Puzzle text: "${currentPuzzle.text}"`);
+          log(`🏷️ Puzzle checkpoint label: "${currentPuzzle.checkpoint}"`);
         } else {
-          log(`❌ No puzzle found for checkpoint: ${currentCheckpointId}`);
+          log(`❌ No puzzle found for ID: ${currentPuzzleId}`);
         }
       }
       
