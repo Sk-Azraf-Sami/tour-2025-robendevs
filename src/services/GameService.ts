@@ -1,5 +1,5 @@
 import { FirestoreService } from './FireStoreService';
-import type { Puzzle, MCQ, MCQOption, TeamLeg } from '../types';
+import type { Puzzle, MCQ, MCQOption, TeamLeg, Team } from '../types';
 
 interface TeamProgress {
   roadmap: string[];
@@ -911,6 +911,63 @@ export class GameService {
     console.log('=== END DEBUG ===');
   }
 
+  // Get overall game status for admin monitoring
+  static async getGameStatus(): Promise<{
+    status: 'waiting' | 'active' | 'paused' | 'stopped' | 'completed';
+    activeTeams: number;
+    pausedTeams: number;
+    completedTeams: number;
+    totalTeams: number;
+    averageProgress: number;
+    totalPoints: number;
+  }> {
+    // Get game status from global settings (centralized approach)
+    const settings = await FirestoreService.getGlobalSettings();
+    const teams = await FirestoreService.getAllTeams();
+    
+    const totalTeams = teams.length;
+    const activeTeams = teams.filter(t => t.isActive && t.gameStartTime && t.gameStartTime > 0).length;
+    const pausedTeams = teams.filter(t => !t.isActive && t.gameStartTime && t.gameStartTime > 0 && t.currentIndex < t.roadmap.length).length;
+    const completedTeams = teams.filter(t => t.currentIndex >= t.roadmap.length).length;
+    
+    const averageProgress = totalTeams > 0 
+      ? teams.reduce((acc, team) => {
+          const progress = team.roadmap.length > 0 ? (team.currentIndex / team.roadmap.length) * 100 : 0;
+          return acc + progress;
+        }, 0) / totalTeams
+      : 0;
+    
+    const totalPoints = teams.reduce((acc, team) => acc + team.totalPoints, 0);
+    
+    // Use centralized game status from settings, with fallback to team-based calculation
+    let status: 'waiting' | 'active' | 'paused' | 'stopped' | 'completed' = settings?.gameStatus || 'waiting';
+    
+    // Override with calculated status only if no centralized status exists
+    if (!settings?.gameStatus) {
+      if (completedTeams === totalTeams && totalTeams > 0) {
+        status = 'completed';
+      } else if (!teams.some(t => t.gameStartTime && t.gameStartTime > 0)) {
+        status = 'waiting';
+      } else if (activeTeams > 0) {
+        status = 'active';
+      } else if (pausedTeams > 0) {
+        status = 'paused';
+      } else {
+        status = 'stopped';
+      }
+    }
+    
+    return {
+      status,
+      activeTeams,
+      pausedTeams,
+      completedTeams,
+      totalTeams,
+      averageProgress: Math.round(averageProgress),
+      totalPoints
+    };
+  }
+
   // Admin control: Start game for all teams
   static async startGameFromAdmin(): Promise<{ success: boolean; message: string; teamsActivated: number }> {
     try {
@@ -934,42 +991,45 @@ export class GameService {
       const gameStartTime = Date.now();
       let teamsActivated = 0;
 
-      // Initialize and activate all teams
+      // Initialize and activate ALL teams (resetting any existing progress)
       for (const team of teams) {
-        // Initialize legs array if not exists or empty
-        let legs = team.legs || [];
-        
-        if (legs.length === 0 && team.roadmap && team.roadmap.length > 0) {
-          // Create legs for each checkpoint in the roadmap
-          legs = team.roadmap.map((puzzleId, index) => ({
-            puzzleId,
-            checkpoint: puzzleId,
-            startTime: 0,
-            endTime: 0,
-            mcqPoints: 0,
-            puzzlePoints: 0,
-            timeBonus: 0,
-            timeTaken: 0,
-            mcqAnswerOptionId: undefined,
-            isFirstCheckpoint: index === 0
-          }));
-        }
+        // Create fresh legs for each checkpoint in the roadmap
+        const legs = team.roadmap.map((puzzleId, index) => ({
+          puzzleId,
+          checkpoint: puzzleId,
+          startTime: 0,
+          endTime: 0,
+          mcqPoints: 0,
+          puzzlePoints: 0,
+          timeBonus: 0,
+          timeTaken: 0,
+          mcqAnswerOptionId: undefined,
+          isFirstCheckpoint: index === 0
+        }));
 
-        // Update team with game start data
+        // Reset team completely and activate
         await FirestoreService.updateTeam(team.id, {
           isActive: true,
           gameStartTime,
           currentIndex: 0,
           totalTime: 0,
+          totalPoints: 0,
           legs
         });
         
         teamsActivated++;
       }
 
+      // Update global game state
+      await FirestoreService.updateGlobalSettings({
+        gameStatus: 'active',
+        gameStartTime,
+        lastStateChange: gameStartTime
+      });
+
       return {
         success: true,
-        message: `Game started successfully! ${teamsActivated} teams are now active and ready to play.`,
+        message: `Game started successfully! ${teamsActivated} teams are now active and ready to play. All previous progress has been cleared for a fresh start.`,
         teamsActivated
       };
     } catch (error) {
@@ -992,73 +1052,41 @@ export class GameService {
       }
 
       let updatedTeams = 0;
+      const currentTime = Date.now();
       
       for (const team of teams) {
-        // Only update teams that have started the game
-        if (team.gameStartTime && team.gameStartTime > 0) {
-          await FirestoreService.updateTeam(team.id, { isActive: !pause });
+        if (pause) {
+          // Pause: Set ALL teams to inactive (regardless of current state)
+          await FirestoreService.updateTeam(team.id, { isActive: false });
           updatedTeams++;
+        } else {
+          // Resume: Set ALL teams that haven't completed the game to active
+          const isCompleted = team.currentIndex >= team.roadmap.length;
+          
+          if (!isCompleted) {
+            await FirestoreService.updateTeam(team.id, { isActive: true });
+            updatedTeams++;
+          }
         }
       }
 
-      if (updatedTeams === 0) {
-        throw new Error('No active teams found to pause/resume. Start the game first.');
-      }
+      // Update global game state
+      await FirestoreService.updateGlobalSettings({
+        gameStatus: pause ? 'paused' : 'active',
+        lastStateChange: currentTime
+      });
 
       return {
         success: true,
         message: pause 
-          ? `Game paused for ${updatedTeams} teams. Teams can no longer progress until resumed.` 
-          : `Game resumed for ${updatedTeams} teams. Teams can now continue playing.`
+          ? `Game paused for all teams. ${updatedTeams} teams are now inactive and cannot progress.` 
+          : `Game resumed for ${updatedTeams} teams. All non-completed teams are now active and can continue playing.`
       };
     } catch (error) {
       console.error('Pause/Resume game error:', error);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to update game state'
-      };
-    }
-  }
-
-  // Admin control: Stop game
-  static async stopGame(): Promise<{ success: boolean; message: string }> {
-    try {
-      const teams = await FirestoreService.getAllTeams();
-      
-      if (teams.length === 0) {
-        throw new Error('No teams found to stop.');
-      }
-
-      let stoppedTeams = 0;
-      
-      for (const team of teams) {
-        // Only stop teams that have actually started
-        if (team.gameStartTime && team.gameStartTime > 0) {
-          await FirestoreService.updateTeam(team.id, { 
-            isActive: false
-            // Note: We don't mark as completed (currentIndex = roadmap.length) 
-            // because that would indicate they finished normally
-          });
-          stoppedTeams++;
-        }
-      }
-
-      if (stoppedTeams === 0) {
-        return {
-          success: true,
-          message: 'No active games found to stop.'
-        };
-      }
-
-      return {
-        success: true,
-        message: `Game stopped for ${stoppedTeams} teams. All team progress has been preserved.`
-      };
-    } catch (error) {
-      console.error('Stop game error:', error);
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to stop game'
       };
     }
   }
@@ -1073,20 +1101,34 @@ export class GameService {
         throw new Error('Global settings not found');
       }
 
+      // Reset global game state first
+      await FirestoreService.updateGlobalSettings({
+        gameStatus: 'waiting',
+        gameStartTime: 0,
+        lastStateChange: Date.now()
+      });
+
+      if (teams.length === 0) {
+        return {
+          success: true,
+          message: 'Game state reset successfully. Ready for new game.',
+          teamsReset: 0
+        };
+      }
+
       let teamsReset = 0;
       
       for (const team of teams) {
-        // Reset team progress completely
-        const resetData = {
+        // Completely reset ALL team progress regardless of current state
+        const resetData: Partial<Team> = {
           currentIndex: 0,
           totalPoints: 0,
           totalTime: 0,
           isActive: false,
-          gameStartTime: 0,
-          legs: [] as TeamLeg[]
+          gameStartTime: 0
         };
 
-        // Initialize empty legs array for all checkpoints
+        // Initialize clean legs array for all checkpoints in the roadmap
         if (team.roadmap && team.roadmap.length > 0) {
           resetData.legs = team.roadmap.map((puzzleId, index) => ({
             puzzleId,
@@ -1100,6 +1142,9 @@ export class GameService {
             mcqAnswerOptionId: undefined,
             isFirstCheckpoint: index === 0
           }));
+        } else {
+          // If no roadmap, still reset the legs to empty
+          resetData.legs = [];
         }
 
         await FirestoreService.updateTeam(team.id, resetData);
@@ -1108,7 +1153,7 @@ export class GameService {
 
       return {
         success: true,
-        message: `Game progress reset for ${teamsReset} teams. Ready to start fresh.`,
+        message: `Game completely reset! All progress cleared for ${teamsReset} teams. All checkpoint progress, points, times, and game state have been reset. Game is now in waiting state and can be started fresh.`,
         teamsReset
       };
     } catch (error) {
