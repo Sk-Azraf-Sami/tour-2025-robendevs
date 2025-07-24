@@ -423,6 +423,38 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             Cancel
           </Button>
         </div>
+
+        <div className="space-y-2">
+          <p className="text-gray-600 text-sm">
+            Position the QR code within the frame to scan
+          </p>
+          
+          {/* Mock scan buttons for development */}
+          <div className="space-y-2">
+            {mockQRCodes.map((mock, index) => (
+              <Button 
+                key={index}
+                type="dashed" 
+                onClick={() => handleMockScan(mock.code)}
+                className="w-full text-xs"
+                size="small"
+              >
+                {mock.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button 
+            type="default" 
+            icon={<CloseOutlined />}
+            onClick={onClose}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+        </div>
       </div>
     </Modal>
   )
