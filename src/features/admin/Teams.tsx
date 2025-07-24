@@ -129,7 +129,7 @@ export default function Teams() {
           totalTime: 0,
           totalPoints: 0,
           isActive: false,
-          legs: []
+          legs: [],
         };
         await FirestoreService.createTeam(newTeam);
         message.success("Team created successfully");
@@ -207,6 +207,44 @@ export default function Teams() {
     setIsModalOpen(true);
   };
 
+  const handleToggleActive = async (team: Team) => {
+    setIsLoading(true);
+    try {
+      await FirestoreService.updateTeam(team.id, {
+        isActive: team.status !== "active",
+      });
+      message.success(
+        `Team ${team.name} is now ${team.status === "active" ? "inactive" : "active"}`
+      );
+      // Refresh teams
+      const firestoreTeams = await FirestoreService.getAllTeams();
+      setTeams(
+        firestoreTeams.map((t) => ({
+          id: t.id,
+          name: t.username,
+          username: t.username,
+          password: t.passwordHash || "",
+          members: t.members,
+          progress:
+            t.roadmap && t.roadmap.length > 0
+              ? Math.round(((t.currentIndex || 0) / t.roadmap.length) * 100)
+              : 0,
+          status: t.isActive
+            ? t.currentIndex >= (t.roadmap?.length || 0)
+              ? "completed"
+              : "active"
+            : "inactive",
+          currentCheckpoint: (t.currentIndex || 0) + 1,
+          createdAt: t.createdAt || "",
+          roadmap: t.roadmap,
+        }))
+      );
+    } catch (err) {
+      message.error("Failed to update team status");
+    }
+    setIsLoading(false);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
@@ -222,7 +260,7 @@ export default function Teams() {
 
   // Create a lookup map for puzzle IDs to names (or checkpoint/text)
   const puzzleNameMap = puzzles.reduce<Record<string, string>>((acc, p) => {
-    acc[p.id] =  p.checkpoint || p.id;
+    acc[p.id] = p.checkpoint || p.id;
     return acc;
   }, {});
 
@@ -282,7 +320,7 @@ export default function Teams() {
         <div className="space-y-1">
           <div className="flex items-center justify-between">
             <Text className="text-xs sm:text-sm">
-              Checkpoint {record.currentCheckpoint-1}/
+              Checkpoint {record.currentCheckpoint - 1}/
               {record.roadmap?.length || 0}
             </Text>
             <Text className="text-xs sm:text-sm font-medium">
@@ -336,6 +374,13 @@ export default function Teams() {
           >
             <Button type="text" icon={<DeleteOutlined />} danger size="small" />
           </Popconfirm>
+          <Button
+            type={record.status === "active" ? "default" : "primary"}
+            size="small"
+            onClick={() => handleToggleActive(record)}
+          >
+            {record.status === "active" ? "Deactivate" : "Activate"}
+          </Button>
         </Space>
       ),
     },
@@ -503,6 +548,6 @@ export default function Teams() {
           </div>
         </Form>
       </Modal>
-       </div>
+    </div>
   );
 }
