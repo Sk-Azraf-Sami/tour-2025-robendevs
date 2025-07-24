@@ -33,7 +33,7 @@ interface Team {
   name: string
   username: string
   password: string
-  members: number
+  members: number // <-- Add this property to fix the error
   progress: number
   status: 'active' | 'completed' | 'inactive'
   currentCheckpoint: number
@@ -67,7 +67,7 @@ export default function Teams() {
           name: t.username, // Firestore doesn't have 'name', so use username as name
           username: t.username,
           password: t.passwordHash || '',
-          members: t.legs ? t.legs.length : 1,
+          members: t.members,
           progress: t.roadmap && t.roadmap.length > 0 ? Math.round(((t.currentIndex || 0) / t.roadmap.length) * 100) : 0,
           status: t.isActive ? (t.currentIndex >= (t.roadmap?.length || 0) ? 'completed' : 'active') : 'inactive',
           currentCheckpoint: (t.currentIndex || 0) + 1,
@@ -91,6 +91,7 @@ export default function Teams() {
         await FirestoreService.updateTeam(editingTeam.id, {
           username: values.username,
           passwordHash: values.password,
+          members: values.members,
           // Optionally update other fields
         })
         message.success('Team updated successfully')
@@ -102,11 +103,11 @@ export default function Teams() {
         const newTeam: Omit<FirestoreTeam, 'id'> = {
           username: values.username,
           passwordHash: values.password,
-          roadmap: puzzleIds, // Each puzzle is a checkpoint
+          members: values.members, 
+          roadmap: puzzleIds, 
           currentIndex: 0,
           totalTime: 0,
           totalPoints: 0,
-          legs: [],
           isActive: false,
         }
         await FirestoreService.createTeam(newTeam)
@@ -119,7 +120,7 @@ export default function Teams() {
         name: t.username,
         username: t.username,
         password: t.passwordHash || '',
-        members: t.legs ? t.legs.length : 1,
+        members: t.members,
         progress: t.roadmap && t.roadmap.length > 0 ? Math.round(((t.currentIndex || 0) / t.roadmap.length) * 100) : 0,
         status: t.isActive ? (t.currentIndex >= (t.roadmap?.length || 0) ? 'completed' : 'active') : 'inactive',
         currentCheckpoint: (t.currentIndex || 0) + 1,
@@ -215,20 +216,20 @@ export default function Teams() {
       )
     },
     {
-  title: 'Progress',
-  key: 'progress',
-  render: (_: unknown, record: Team) => (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <Text className="text-xs sm:text-sm">
-          Checkpoint {record.currentCheckpoint}/{record.roadmap?.length || 0}
-        </Text>
-        <Text className="text-xs sm:text-sm font-medium">{record.progress}%</Text>
-      </div>
-      <Progress percent={record.progress} size="small" />
-    </div>
-  )
-},
+      title: 'Progress',
+      key: 'progress',
+      render: (_: unknown, record: Team) => (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <Text className="text-xs sm:text-sm">
+              Checkpoint {record.currentCheckpoint}/{record.roadmap?.length || 0}
+            </Text>
+            <Text className="text-xs sm:text-sm font-medium">{record.progress}%</Text>
+          </div>
+          <Progress percent={record.progress} size="small" />
+        </div>
+      )
+    },
     {
       title: 'Status',
       dataIndex: 'status',

@@ -23,9 +23,9 @@ export interface Team {
   currentIndex: number;
   totalTime: number;
   totalPoints: number;
-  legs: TeamLeg[];
   isActive: boolean;
   createdAt?: string; 
+  members: number
 }
 
 export interface TeamLeg {
