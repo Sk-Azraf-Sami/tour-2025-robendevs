@@ -31,12 +31,16 @@ export interface Team {
 }
 
 export interface TeamLeg {
-  checkpointId: string;
-  startTime: number;
-  endTime?: number;
-  mcqPoints: number;
-  timeBonus: number;
-  mcqAnswerOptionId?: string;
+  puzzleId: string;                    // Puzzle ID from team's roadmap
+  checkpoint: string;                  // Checkpoint extracted from puzzle (e.g., "cp_0", "cp_1")
+  startTime: number;                   // When QR code is scanned (puzzle starts)
+  endTime?: number;                    // When MCQ is answered (puzzle completed)
+  mcqPoints: number;                   // Static points from MCQ answer choice
+  puzzlePoints: number;                // Points for completing this puzzle (base_points)
+  timeBonus: number;                   // Bonus/penalty based on completion time
+  timeTaken: number;                   // Total time in seconds for this checkpoint
+  mcqAnswerOptionId?: string;          // Which MCQ option was selected
+  isFirstCheckpoint: boolean;          // Special handling for cp_0 (no MCQ, same start/end time)
 }
 
 export interface MCQ {
