@@ -1,54 +1,72 @@
 import { useState } from 'react'
-import { Card, Button, Typography, Image, Alert } from 'antd'
-import { BulbOutlined, ArrowRightOutlined, EyeOutlined } from '@ant-design/icons'
+import { Card, Button, Typography, Image, Alert, message } from 'antd'
+import { BulbOutlined, EnvironmentOutlined, EyeOutlined } from '@ant-design/icons'
 
 const { Title, Text, Paragraph } = Typography
 
-interface PuzzleViewProps {
-  puzzle?: {
-    id: string
-    text: string
-    imageURL?: string
-    code: string
-  }
-  onComplete: () => void
+interface PuzzleData {
+  id: string
+  text: string
+  imageURL?: string
+  // Note: removed 'code' and 'nextLocation' as these will be handled by backend
+  hint?: string
 }
 
-export default function PuzzleView({ puzzle, onComplete }: PuzzleViewProps) {
+interface PuzzleViewProps {
+  puzzle?: PuzzleData
+  onProceedToScan: () => void
+}
+
+export default function PuzzleView({ puzzle, onProceedToScan }: PuzzleViewProps) {
   const [showHint, setShowHint] = useState(false)
 
-  // Mock puzzle data
-  const mockPuzzle = {
+  // DUMMY DATA: This simulates puzzle data from backend
+  // TODO: Replace with actual puzzle fetched from GameService.getNextPuzzle()
+  const dummyPuzzleData: PuzzleData = {
     id: '1',
-    text: 'I stand tall with hands that turn, marking moments as time burns. Near the square where people meet, find the code beneath my feet.',
-    imageURL: 'https://via.placeholder.com/300x200?text=Clock+Tower',
-    code: 'TOWER-CLOCK-2025'
+    text: 'Find the statue of the famous explorer who discovered this land. Look for the bronze plaque at its base. The next QR code awaits where history meets the present.',
+    imageURL: 'https://via.placeholder.com/400x300?text=Explorer+Statue',
+    hint: 'The explorer is facing east, towards the rising sun. Look for bronze markers nearby.',
   }
 
-  const currentPuzzle = puzzle || mockPuzzle
+  // Use the prop if provided, otherwise fall back to dummy data
+  const data = puzzle ?? dummyPuzzleData
+
+  const handleProceedToScan = () => {
+    // TODO: In real implementation, this should not auto-complete the puzzle
+    // The puzzle is only "completed" when the user scans the correct QR code at the location
+    message.info('Use this clue to find your next checkpoint location. Look for the QR code there!')
+    onProceedToScan()
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <BulbOutlined className="text-4xl text-yellow-500 mb-2" />
-        <Title level={4}>Solve the Puzzle</Title>
-        <Text className="text-gray-600">
-          Find your next checkpoint using this clue
-        </Text>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="text-center px-2">
+        <Title level={2} className="text-lg sm:text-xl md:text-2xl lg:text-3xl">Puzzle Challenge</Title>
+        <Text type="secondary" className="text-sm sm:text-base">Solve the puzzle to find your next checkpoint location</Text>
       </div>
 
-      <Card className="border-2 border-yellow-200 bg-yellow-50">
-        <div className="space-y-4">
-          {currentPuzzle.imageURL && (
-            <div className="text-center">
+      {/* Puzzle Card */}
+      <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 mx-2 sm:mx-0">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <BulbOutlined className="text-purple-600 text-base sm:text-lg" />
+          <Title level={4} className="!mb-0 text-base sm:text-lg">Puzzle #{data.id}</Title>
+        </div>
+        <Text type="secondary" className="block mb-3 sm:mb-4 text-sm sm:text-base">Read carefully and explore your surroundings</Text>
+        
+        <div className="space-y-3 sm:space-y-4">
+          {data.imageURL && (
+            <div className="flex justify-center">
               <Image
-                src={currentPuzzle.imageURL}
-                alt="Puzzle hint"
-                className="rounded-lg"
-                style={{ maxHeight: '200px', objectFit: 'cover' }}
+                src={data.imageURL}
+                alt="Puzzle clue image"
+                width="100%"
+                height="auto"
+                style={{ maxWidth: '400px', maxHeight: '300px' }}
+                className="rounded-lg border shadow-sm"
                 preview={{
                   mask: (
-                    <div className="text-white">
+                    <div className="text-white text-sm sm:text-base">
                       <EyeOutlined /> View Image
                     </div>
                   )
@@ -56,58 +74,82 @@ export default function PuzzleView({ puzzle, onComplete }: PuzzleViewProps) {
               />
             </div>
           )}
-          
-          <Card size="small" className="bg-white">
-            <Paragraph className="text-center text-lg font-medium mb-0 italic">
-              "{currentPuzzle.text}"
+
+          <Card size="small" className="bg-white border">
+            <Paragraph className="text-sm sm:text-base leading-relaxed mb-0">
+              {data.text}
             </Paragraph>
           </Card>
         </div>
       </Card>
 
-      {!showHint ? (
-        <Button
-          type="dashed"
-          icon={<BulbOutlined />}
-          onClick={() => setShowHint(true)}
-          className="w-full"
-        >
-          Need a Hint?
-        </Button>
-      ) : (
-        <Alert
-          message="Hint"
-          description="Look for landmarks mentioned in the riddle. The answer often relates to the physical features described."
-          type="warning"
-          showIcon
-          icon={<BulbOutlined />}
-        />
-      )}
+      {/* Hint Card */}
+      <Card className="mx-2 sm:mx-0">
+        <Title level={4} className="text-base sm:text-lg">💡 Hint</Title>
+        <Text type="secondary" className="block mb-3 sm:mb-4 text-sm sm:text-base">Need a little help? Here's a clue to get you started</Text>
+        
+        {!showHint ? (
+          <Button
+            type="dashed"
+            icon={<BulbOutlined />}
+            onClick={() => setShowHint(true)}
+            className="w-full h-12 sm:h-auto text-sm sm:text-base"
+            size="large"
+          >
+            Show Hint
+          </Button>
+        ) : (
+          <Alert
+            message="Hint"
+            description={data.hint || "Look carefully at the surroundings and landmarks mentioned in the puzzle."}
+            type="warning"
+            showIcon
+            icon={<BulbOutlined />}
+            className="text-sm sm:text-base"
+          />
+        )}
+      </Card>
 
-      <div className="space-y-3">
-        <Alert
-          message="Instructions"
-          description="Use this clue to find your next checkpoint. Look for the QR code at the location described in the puzzle."
-          type="info"
-          showIcon
-        />
-
-        <Button 
-          type="primary" 
-          size="large"
-          onClick={onComplete}
-          className="w-full"
-          icon={<ArrowRightOutlined />}
-        >
-          I Found the Location
-        </Button>
-      </div>
-
-      <div className="text-center">
-        <Text className="text-sm text-gray-500">
-          💡 Remember: Each puzzle leads to a specific location where you'll find the next QR code
+      {/* Action Card */}
+      <Card className="mx-2 sm:mx-0">
+        <Title level={4} className="text-base sm:text-lg">Find the Location</Title>
+        <Text type="secondary" className="block mb-3 sm:mb-4 text-sm sm:text-base">
+          Use the puzzle clue to find the next checkpoint location, then scan the QR code there
         </Text>
-      </div>
+        
+        <div className="space-y-3 sm:space-y-4">
+          <Alert
+            message="How it works"
+            description="The puzzle gives you clues to find a real-world location. Once you find it, look for a QR code to scan. Only the correct QR code for your current checkpoint will work."
+            type="info"
+            showIcon
+            className="text-sm sm:text-base"
+          />
+
+          <Button 
+            type="primary" 
+            size="large" 
+            onClick={handleProceedToScan} 
+            className="w-full h-12 sm:h-auto text-sm sm:text-base"
+            icon={<EnvironmentOutlined />}
+          >
+            I'm Ready to Find the Location
+          </Button>
+        </div>
+      </Card>
+
+      {/* Instructions Card */}
+      <Card className="mx-2 sm:mx-0">
+        <Title level={4} className="text-base sm:text-lg">How to Solve</Title>
+        <ul className="text-xs sm:text-sm space-y-1 sm:space-y-2 text-gray-600 mt-3 sm:mt-4 pl-4">
+          <li>• Read the puzzle description carefully</li>
+          <li>• Use the image as a visual clue if provided</li>
+          <li>• Look for keywords that describe locations or landmarks</li>
+          <li>• Navigate to the physical location in the real world</li>
+          <li>• Find and scan the QR code at that location</li>
+          <li>• Only the correct QR code for your checkpoint will advance the game</li>
+        </ul>
+      </Card>
     </div>
   )
 }

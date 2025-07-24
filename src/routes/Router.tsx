@@ -1,6 +1,6 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import Landing from '../components/Landing'
-import { LoginPage } from '../pages'
+import { LoginPage, TeamPage } from '../pages'
 import AdminPage from '../pages/AdminPage'
 import Dashboard from '../features/admin/Dashboard'
 import MCQs from '../features/admin/MCQs'
@@ -10,7 +10,12 @@ import Settings from '../features/admin/Settings'
 import Monitor from '../features/admin/Monitor'
 import Launch from '../features/admin/Launch'
 import ProtectedRoute from '../components/ProtectedRoute'
-import TeamDashboard from '../features/teams/TeamDashboard'
+import TeamGameFlow from '../features/teams/TeamGameFlow'
+// Legacy components (keeping for reference)
+import TeamDashboard from '../features/teams/Dashboard'
+import QRScanPage from '../features/teams/QRScanPage'
+import MCQPage from '../features/teams/MCQPage'
+import PuzzlePage from '../features/teams/PuzzleView'
 
 const router = createBrowserRouter([
   {
@@ -21,13 +26,36 @@ const router = createBrowserRouter([
     path: '/login',
     element: <LoginPage />,
   },
-   {
-    path: '/team/dashboard',
+  {
+    path: '/team',
     element: (
       <ProtectedRoute>
-        <TeamDashboard />
+        <TeamPage />
       </ProtectedRoute>
     ),
+    children: [
+      {
+        path: 'dashboard',
+        element: <TeamGameFlow />,
+      },
+      // Legacy routes (keeping for backward compatibility during transition)
+      {
+        path: 'legacy/dashboard', 
+        element: <TeamDashboard />,
+      },
+      {
+        path: 'legacy/scan',
+        element: <QRScanPage />,
+      },
+      {
+        path: 'legacy/mcq',
+        element: <MCQPage />,
+      },
+      {
+        path: 'legacy/puzzle',
+        element: <PuzzlePage onProceedToScan={() => {}} />,
+      },
+    ],
   },
   {
     path: '/admin',
