@@ -66,13 +66,6 @@ export default function Launch() {
       description: 'All QR codes generated',
       status: 'success',
       required: true
-    },
-    {
-      id: '6',
-      name: 'System Resources',
-      description: 'Server capacity: 85%',
-      status: 'warning',
-      required: false
     }
   ]
 

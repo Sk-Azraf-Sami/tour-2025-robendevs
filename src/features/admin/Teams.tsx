@@ -129,6 +129,7 @@ export default function Teams() {
           totalTime: 0,
           totalPoints: 0,
           isActive: false,
+          legs: []
         };
         await FirestoreService.createTeam(newTeam);
         message.success("Team created successfully");
