@@ -17,6 +17,7 @@ import {
 } from '@ant-design/icons'
 import { GameService } from '../../services/GameService'
 import { FirestoreService } from '../../services/FireStoreService'
+import type { Team, TeamLeg } from '../../types'
 import './Monitor.css'
 
 const { Title, Text } = Typography
@@ -80,7 +81,9 @@ export default function Monitor() {
   const [teams, setTeams] = useState<TeamMonitoringData[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedTeam, setSelectedTeam] = useState<TeamMonitoringData | null>(null)
+  const [selectedTeamDetails, setSelectedTeamDetails] = useState<Team | null>(null)
   const [drawerVisible, setDrawerVisible] = useState(false)
+  const [detailsLoading, setDetailsLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   // Real-time data fetching
@@ -265,10 +268,45 @@ export default function Monitor() {
     }
   }
 
-  const showTeamDetails = (team: TeamMonitoringData) => {
+  const showTeamDetails = async (team: TeamMonitoringData) => {
     setSelectedTeam(team)
     setDrawerVisible(true)
+    setDetailsLoading(true)
+    
+    try {
+      // Fetch full team details including legs data
+      const fullTeamDetails = await FirestoreService.getTeam(team.teamId)
+      setSelectedTeamDetails(fullTeamDetails)
+    } catch (error) {
+      console.error('Error fetching team details:', error)
+      message.error('Failed to load detailed team data')
+    } finally {
+      setDetailsLoading(false)
+    }
   }
+
+  // Helper functions for leg data formatting
+  const formatDuration = (seconds: number) => {
+    if (!seconds || seconds === 0) return '0s';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  };
+
+  const getCheckpointStatus = (leg: TeamLeg) => {
+    if (leg.endTime && leg.endTime > 0) return 'completed';
+    if (leg.startTime && leg.startTime > 0) return 'in_progress';
+    return 'not_started';
+  };
+
+  const getCheckpointStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'green';
+      case 'in_progress': return 'blue';
+      case 'not_started': return 'gray';
+      default: return 'gray';
+    }
+  };
 
   const columns = [
     {
@@ -322,14 +360,21 @@ export default function Monitor() {
       key: 'totalPoints',
       render: (points: number, record: TeamMonitoringData) => (
         <div className="text-center">
-          <Text strong className="text-lg flex items-center gap-1">
+          <Text strong className="text-lg flex items-center justify-center gap-1">
             <TrophyOutlined className="text-yellow-500" />
             {points}
           </Text>
           {record.currentLegDetails && record.status === 'in_progress' && (
-            <Text className="text-xs text-gray-500 block">
-              Current: {record.currentLegDetails.mcqPoints + record.currentLegDetails.puzzlePoints + record.currentLegDetails.timeBonus}pts
-            </Text>
+            <div className="text-xs text-gray-500 space-y-1">
+              <div className="text-xs">Current checkpoint:</div>
+              <div className="flex justify-center gap-1 text-xs">
+                <span style={{ color: '#1890ff' }}>MCQ: {record.currentLegDetails.mcqPoints}</span>
+                <span style={{ color: '#52c41a' }}>+P: {record.currentLegDetails.puzzlePoints}</span>
+                <span style={{ color: record.currentLegDetails.timeBonus >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                  +T: {record.currentLegDetails.timeBonus >= 0 ? '+' : ''}{record.currentLegDetails.timeBonus}
+                </span>
+              </div>
+            </div>
           )}
         </div>
       ),
@@ -628,13 +673,16 @@ export default function Monitor() {
         title={
           <div className="flex items-center gap-2">
             <MonitorOutlined />
-            <span>Team Details: {selectedTeam?.username}</span>
+            <span className="text-sm sm:text-base">Team Details: {selectedTeam?.username}</span>
           </div>
         }
         placement="right"
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
-        width={640}
+        width={window.innerWidth >= 1024 ? 720 : '100%'}
+        styles={{
+          body: { padding: '16px' }
+        }}
         className="team-details-drawer"
       >
         {selectedTeam && (
@@ -731,6 +779,262 @@ export default function Monitor() {
                     <Text strong className="text-green-600">{selectedTeam.lastCompletedCheckpoint.totalPoints}</Text>
                   </Descriptions.Item>
                 </Descriptions>
+              </Card>
+            )}
+
+            {/* Detailed Checkpoint Breakdown */}
+            {selectedTeamDetails && selectedTeamDetails.legs && selectedTeamDetails.legs.length > 0 && (
+              <Card 
+                size="small" 
+                title={
+                  <div className="flex items-center gap-2">
+                    <TrophyOutlined />
+                    <span className="text-sm sm:text-base">Detailed Checkpoint Scoring</span>
+                  </div>
+                }
+                loading={detailsLoading}
+                extra={
+                  <Text className="text-xs text-gray-500">
+                    {selectedTeamDetails.legs.filter(leg => leg.endTime && leg.endTime > 0).length} / {selectedTeamDetails.legs.length} completed
+                  </Text>
+                }
+              >
+                {/* Mobile-friendly Cards Layout for small screens */}
+                <div className="block sm:hidden space-y-3">
+                  {selectedTeamDetails.legs.map((leg, index) => (
+                    <Card 
+                      key={index} 
+                      size="small" 
+                      className="mobile-checkpoint-card border border-gray-200"
+                      bodyStyle={{ padding: '12px' }}
+                    >
+                      <div className="space-y-3">
+                        {/* Checkpoint Header */}
+                        <div className="mobile-checkpoint-header flex justify-between items-start">
+                          <div>
+                            <Text strong className="text-base">{leg.checkpoint}</Text>
+                            <div className="text-xs text-gray-500 mt-1 truncate">
+                              {leg.puzzleId}
+                            </div>
+                          </div>
+                          <Tag 
+                            color={getCheckpointStatusColor(getCheckpointStatus(leg))}
+                            className="ml-2"
+                          >
+                            {getCheckpointStatus(leg)}
+                          </Tag>
+                        </div>
+
+                        {/* Timing Information */}
+                        <div className="timing-section bg-gray-50 p-2 rounded text-xs">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Text className="text-gray-600">Start:</Text>
+                              <div className="font-mono text-xs">
+                                {leg.startTime ? new Date(leg.startTime).toLocaleTimeString() : 'Not started'}
+                              </div>
+                            </div>
+                            <div>
+                              <Text className="text-gray-600">End:</Text>
+                              <div className="font-mono text-xs">
+                                {leg.endTime ? new Date(leg.endTime).toLocaleTimeString() : 'Not finished'}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-center">
+                            <Text strong className="text-sm">Duration: {formatDuration(leg.timeTaken)}</Text>
+                          </div>
+                        </div>
+
+                        {/* Points Breakdown */}
+                        <div className="points-breakdown-section bg-blue-50 p-3 rounded">
+                          <div className="text-xs font-semibold text-gray-700 mb-2">Points Breakdown</div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs">MCQ Points:</span>
+                              <Text strong style={{ color: '#1890ff' }}>{leg.mcqPoints}</Text>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs">Puzzle Points:</span>
+                              <Text strong style={{ color: '#52c41a' }}>{leg.puzzlePoints}</Text>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs">Time Bonus:</span>
+                              <Text 
+                                strong 
+                                style={{ color: leg.timeBonus >= 0 ? '#52c41a' : '#ff4d4f' }}
+                              >
+                                {leg.timeBonus >= 0 ? '+' : ''}{leg.timeBonus}
+                              </Text>
+                            </div>
+                            <div className="border-t pt-2 mt-2 flex justify-between items-center">
+                              <span className="font-semibold text-sm">Total Points:</span>
+                              <Text strong className="text-lg text-green-600">
+                                {leg.mcqPoints + leg.puzzlePoints + leg.timeBonus}
+                              </Text>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* MCQ Answer */}
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <Text className="text-xs text-gray-600">MCQ Answer:</Text>
+                            <div className="text-sm font-medium">
+                              {leg.mcqAnswerOptionId || 'Not answered'}
+                            </div>
+                          </div>
+                          <Tag 
+                            color={leg.isFirstCheckpoint ? 'orange' : 'default'}
+                            className="text-xs"
+                          >
+                            {leg.isFirstCheckpoint ? 'First CP' : 'Regular'}
+                          </Tag>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Desktop Table Layout for larger screens */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <Table
+                    columns={[
+                      {
+                        title: 'Checkpoint',
+                        key: 'checkpoint',
+                        width: 140,
+                        render: (_, leg: TeamLeg) => (
+                          <div className="min-w-[120px]">
+                            <Text strong className="text-sm">{leg.checkpoint}</Text>
+                            <div className="text-xs text-gray-500 mt-1 truncate" title={leg.puzzleId}>
+                              {leg.puzzleId}
+                            </div>
+                            <Tag 
+                              color={getCheckpointStatusColor(getCheckpointStatus(leg))} 
+                              className="mt-1"
+                            >
+                              {getCheckpointStatus(leg)}
+                            </Tag>
+                          </div>
+                        ),
+                      },
+                      {
+                        title: 'Timing',
+                        key: 'timing',
+                        width: 160,
+                        render: (_, leg: TeamLeg) => (
+                          <div className="min-w-[140px] text-xs space-y-1">
+                            <div>
+                              <span className="text-gray-500">Start:</span> 
+                              <span className="ml-1 font-mono">
+                                {leg.startTime ? new Date(leg.startTime).toLocaleTimeString() : 'Not started'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">End:</span> 
+                              <span className="ml-1 font-mono">
+                                {leg.endTime ? new Date(leg.endTime).toLocaleTimeString() : 'Not finished'}
+                              </span>
+                            </div>
+                            <div className="pt-1">
+                              <Text strong className="text-sm">Duration: {formatDuration(leg.timeTaken)}</Text>
+                            </div>
+                          </div>
+                        ),
+                      },
+                      {
+                        title: 'Points Breakdown',
+                        key: 'points',
+                        width: 180,
+                        render: (_, leg: TeamLeg) => (
+                          <div className="min-w-[160px]">
+                            <div className="space-y-1 text-xs">
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600">MCQ:</span>
+                                <Text strong style={{ color: '#1890ff' }}>{leg.mcqPoints}</Text>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600">Puzzle:</span>
+                                <Text strong style={{ color: '#52c41a' }}>{leg.puzzlePoints}</Text>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600">Time Bonus:</span>
+                                <Text 
+                                  strong 
+                                  style={{ color: leg.timeBonus >= 0 ? '#52c41a' : '#ff4d4f' }}
+                                >
+                                  {leg.timeBonus >= 0 ? '+' : ''}{leg.timeBonus}
+                                </Text>
+                              </div>
+                              <div className="flex justify-between items-center border-t pt-1 mt-2">
+                                <span className="font-semibold">Total:</span>
+                                <Text strong className="text-base text-green-600">
+                                  {leg.mcqPoints + leg.puzzlePoints + leg.timeBonus}
+                                </Text>
+                              </div>
+                            </div>
+                          </div>
+                        ),
+                      },
+                      {
+                        title: 'MCQ Answer',
+                        key: 'mcq',
+                        width: 120,
+                        render: (_, leg: TeamLeg) => (
+                          <div className="min-w-[100px] text-center">
+                            <div className="text-sm font-medium mb-1">
+                              {leg.mcqAnswerOptionId || 'Not answered'}
+                            </div>
+                            <Tag 
+                              color={leg.isFirstCheckpoint ? 'orange' : 'default'}
+                            >
+                              {leg.isFirstCheckpoint ? 'First CP' : 'Regular'}
+                            </Tag>
+                          </div>
+                        ),
+                      },
+                    ]}
+                    dataSource={selectedTeamDetails.legs.map((leg, index) => ({ ...leg, key: index }))}
+                    pagination={false}
+                    size="small"
+                    scroll={{ x: 700 }}
+                    className="checkpoint-details-table"
+                  />
+                </div>
+
+                {/* Summary Statistics */}
+                <div className="mt-4 summary-stats-grid">
+                  <div className="summary-stat-item">
+                    <div className="summary-stat-value text-blue-600">
+                      {selectedTeamDetails.legs.reduce((sum, leg) => sum + leg.mcqPoints, 0)}
+                    </div>
+                    <div className="summary-stat-label">Total MCQ Points</div>
+                  </div>
+                  <div className="summary-stat-item">
+                    <div className="summary-stat-value text-green-600">
+                      {selectedTeamDetails.legs.reduce((sum, leg) => sum + leg.puzzlePoints, 0)}
+                    </div>
+                    <div className="summary-stat-label">Total Puzzle Points</div>
+                  </div>
+                  <div className="summary-stat-item">
+                    <div className={`summary-stat-value ${
+                      selectedTeamDetails.legs.reduce((sum, leg) => sum + leg.timeBonus, 0) >= 0 
+                        ? 'text-green-600' 
+                        : 'text-red-600'
+                    }`}>
+                      {selectedTeamDetails.legs.reduce((sum, leg) => sum + leg.timeBonus, 0) >= 0 ? '+' : ''}
+                      {selectedTeamDetails.legs.reduce((sum, leg) => sum + leg.timeBonus, 0)}
+                    </div>
+                    <div className="summary-stat-label">Total Time Bonus</div>
+                  </div>
+                  <div className="summary-stat-item">
+                    <div className="summary-stat-value text-purple-600">
+                      {selectedTeamDetails.legs.reduce((sum, leg) => sum + leg.mcqPoints + leg.puzzlePoints + leg.timeBonus, 0)}
+                    </div>
+                    <div className="summary-stat-label">Grand Total</div>
+                  </div>
+                </div>
               </Card>
             )}
 
