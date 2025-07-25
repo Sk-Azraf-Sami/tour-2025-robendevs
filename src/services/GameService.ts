@@ -99,7 +99,7 @@ export class GameService {
           puzzlePoints: 0,
           timeBonus: 0,
           timeTaken: 0,
-          isFirstCheckpoint: i === 0 && puzzle?.checkpoint === 'cp_0'
+          isFirstCheckpoint: puzzle?.checkpoint === 'cp_0' // Fix: Check for cp_0 specifically, not index
         });
       }
       
@@ -193,13 +193,7 @@ export class GameService {
         const isGameComplete = newCurrentIndex >= team.roadmap.length;
         const newTotalPoints = team.totalPoints; // No points added for first checkpoint
         
-        // Set start time for next checkpoint when moving from first to second
-        if (!isGameComplete && newCurrentIndex < updatedLegs.length) {
-          const nextLeg = updatedLegs[newCurrentIndex];
-          if (nextLeg && nextLeg.startTime === 0) {
-            nextLeg.startTime = currentTime; // Start timing for second checkpoint immediately
-          }
-        }
+        // Note: Don't set start time for next checkpoint here - it should only be set when they scan the next QR code
         
         await FirestoreService.updateTeam(teamId, {
           legs: updatedLegs,
@@ -470,7 +464,7 @@ export class GameService {
         puzzlePoints: 0,
         timeBonus: 0,
         timeTaken: 0,
-        isFirstCheckpoint: i === 0 && puzzle?.checkpoint === 'cp_0'
+        isFirstCheckpoint: puzzle?.checkpoint === 'cp_0' // Fix: Check for cp_0 specifically, not index
       });
     }
     
@@ -994,17 +988,20 @@ export class GameService {
       // Initialize and activate ALL teams (resetting any existing progress)
       for (const team of teams) {
         // Create fresh legs for each checkpoint in the roadmap
-        const legs = team.roadmap.map((puzzleId, index) => ({
-          puzzleId,
-          checkpoint: puzzleId,
-          startTime: 0,
-          endTime: 0,
-          mcqPoints: 0,
-          puzzlePoints: 0,
-          timeBonus: 0,
-          timeTaken: 0,
-          mcqAnswerOptionId: null,
-          isFirstCheckpoint: index === 0
+        const legs = await Promise.all(team.roadmap.map(async (puzzleId) => {
+          const puzzle = await FirestoreService.getPuzzle(puzzleId);
+          return {
+            puzzleId,
+            checkpoint: puzzle?.checkpoint || puzzleId,
+            startTime: 0,
+            endTime: 0,
+            mcqPoints: 0,
+            puzzlePoints: 0,
+            timeBonus: 0,
+            timeTaken: 0,
+            mcqAnswerOptionId: null,
+            isFirstCheckpoint: puzzle?.checkpoint === 'cp_0' // Fix: Check for cp_0 specifically, not index
+          };
         }));
 
         // Reset team completely and activate
@@ -1126,17 +1123,20 @@ export class GameService {
         gameStartTime: 0,
         // Fix: ensure no undefined values in legs
         legs: team.roadmap && team.roadmap.length > 0
-          ? team.roadmap.map((puzzleId, index) => ({
-              puzzleId,
-              checkpoint: puzzleId,
-              startTime: 0,
-              endTime: 0,
-              mcqPoints: 0,
-              puzzlePoints: 0,
-              timeBonus: 0,
-              timeTaken: 0,
-              mcqAnswerOptionId: null, 
-              isFirstCheckpoint: index === 0
+          ? await Promise.all(team.roadmap.map(async (puzzleId) => {
+              const puzzle = await FirestoreService.getPuzzle(puzzleId);
+              return {
+                puzzleId,
+                checkpoint: puzzle?.checkpoint || puzzleId,
+                startTime: 0,
+                endTime: 0,
+                mcqPoints: 0,
+                puzzlePoints: 0,
+                timeBonus: 0,
+                timeTaken: 0,
+                mcqAnswerOptionId: null, 
+                isFirstCheckpoint: puzzle?.checkpoint === 'cp_0' // Fix: Check for cp_0 specifically, not index
+              };
             }))
           : []
       };
