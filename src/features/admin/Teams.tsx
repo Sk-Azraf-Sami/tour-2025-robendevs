@@ -494,17 +494,18 @@ export default function Teams() {
           onFinish={handleSubmit}
           className="mt-4"
         >
-          <Form.Item
+          {/*<Form.Item
             name="name"
             label="Team Name"
             rules={[{ required: true, message: "Please enter the team name" }]}
           >
             <Input placeholder="Enter team name" />
           </Form.Item>
+          */}
 
           <Form.Item
             name="username"
-            label="Username"
+            label="Username (Team Name)"
             rules={[{ required: true, message: "Please enter the username" }]}
           >
             <Input placeholder="Enter login username" />

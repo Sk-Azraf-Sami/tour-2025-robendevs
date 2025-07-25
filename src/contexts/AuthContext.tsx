@@ -15,12 +15,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (username: string, password: string): Promise<boolean> => {
     setIsLoading(true)
     
     try {
       // Try team login first (using username field from Firestore)
-      const team = await AuthService.loginTeam(email, password)
+      const team = await AuthService.loginTeam(username, password)
       if (team) {
         const userObj: User = {
           id: team.id,
@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Try admin login
-      const admin = await AuthService.loginAdmin(email, password)
+      const admin = await AuthService.loginAdmin(username, password)
       if (admin) {
         const userObj: User = {
           id: admin.id,
