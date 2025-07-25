@@ -363,7 +363,7 @@ export class GameService {
       puzzlePoints,
       timeBonus,
       timeTaken: timeSpentSeconds,
-      mcqAnswerOptionId: answerOptionId
+      mcqAnswerOptionId: answerOptionId 
     };
 
     const newCurrentIndex = team.currentIndex + 1;
@@ -664,7 +664,7 @@ export class GameService {
       puzzlePoints: number;
       timeBonus: number;
       totalPoints: number;
-      mcqAnswerOptionId?: string;
+      mcqAnswerOptionId?: string | null;
       isFirstCheckpoint: boolean;
     }>;
   } | null> {
@@ -1003,7 +1003,7 @@ export class GameService {
           puzzlePoints: 0,
           timeBonus: 0,
           timeTaken: 0,
-          mcqAnswerOptionId: undefined,
+          mcqAnswerOptionId: null,
           isFirstCheckpoint: index === 0
         }));
 
@@ -1093,78 +1093,72 @@ export class GameService {
 
   // Admin control: Reset game progress for all teams
   static async resetGame(): Promise<{ success: boolean; message: string; teamsReset: number }> {
-    try {
-      const teams = await FirestoreService.getAllTeams();
-      const settings = await FirestoreService.getGlobalSettings();
-      
-      if (!settings) {
-        throw new Error('Global settings not found');
-      }
+  try {
+    const teams = await FirestoreService.getAllTeams();
+    const settings = await FirestoreService.getGlobalSettings();
 
-      // Reset global game state first
-      await FirestoreService.updateGlobalSettings({
-        gameStatus: 'waiting',
-        gameStartTime: 0,
-        lastStateChange: Date.now()
-      });
+    if (!settings) {
+      throw new Error('Global settings not found');
+    }
 
-      if (teams.length === 0) {
-        return {
-          success: true,
-          message: 'Game state reset successfully. Ready for new game.',
-          teamsReset: 0
-        };
-      }
+    await FirestoreService.updateGlobalSettings({
+      gameStatus: 'waiting',
+      gameStartTime: 0,
+      lastStateChange: Date.now()
+    });
 
-      let teamsReset = 0;
-      
-      for (const team of teams) {
-        // Completely reset ALL team progress regardless of current state
-        const resetData: Partial<Team> = {
-          currentIndex: 0,
-          totalPoints: 0,
-          totalTime: 0,
-          isActive: false,
-          gameStartTime: 0
-        };
-
-        // Initialize clean legs array for all checkpoints in the roadmap
-        if (team.roadmap && team.roadmap.length > 0) {
-          resetData.legs = team.roadmap.map((puzzleId, index) => ({
-            puzzleId,
-            checkpoint: puzzleId,
-            startTime: 0,
-            endTime: 0,
-            mcqPoints: 0,
-            puzzlePoints: 0,
-            timeBonus: 0,
-            timeTaken: 0,
-            mcqAnswerOptionId: undefined,
-            isFirstCheckpoint: index === 0
-          }));
-        } else {
-          // If no roadmap, still reset the legs to empty
-          resetData.legs = [];
-        }
-
-        await FirestoreService.updateTeam(team.id, resetData);
-        teamsReset++;
-      }
-
+    if (teams.length === 0) {
       return {
         success: true,
-        message: `Game completely reset! All progress cleared for ${teamsReset} teams. All checkpoint progress, points, times, and game state have been reset. Game is now in waiting state and can be started fresh.`,
-        teamsReset
-      };
-    } catch (error) {
-      console.error('Reset game error:', error);
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to reset game',
+        message: 'Game state reset successfully. Ready for new game.',
         teamsReset: 0
       };
     }
+
+    let teamsReset = 0;
+
+    for (const team of teams) {
+      const resetData: Partial<Team> = {
+        currentIndex: 0,
+        totalPoints: 0,
+        totalTime: 0,
+        isActive: false,
+        gameStartTime: 0,
+        // Fix: ensure no undefined values in legs
+        legs: team.roadmap && team.roadmap.length > 0
+          ? team.roadmap.map((puzzleId, index) => ({
+              puzzleId,
+              checkpoint: puzzleId,
+              startTime: 0,
+              endTime: 0,
+              mcqPoints: 0,
+              puzzlePoints: 0,
+              timeBonus: 0,
+              timeTaken: 0,
+              mcqAnswerOptionId: null, 
+              isFirstCheckpoint: index === 0
+            }))
+          : []
+      };
+
+      await FirestoreService.updateTeam(team.id, resetData);
+      teamsReset++;
+    }
+
+    return {
+      success: true,
+      message: `Game completely reset! All progress cleared for ${teamsReset} teams. All checkpoint progress, points, times, and game state have been reset. Game is now in waiting state and can be started fresh.`,
+      teamsReset
+    };
+  } catch (error) {
+    console.error('Reset game error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to reset game',
+      teamsReset: 0
+    };
   }
+}
 
   /**
    * Debug timing issues for a specific team

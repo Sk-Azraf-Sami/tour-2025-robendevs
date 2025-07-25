@@ -44,7 +44,7 @@ export interface TeamLeg {
   puzzlePoints: number;                // Points for completing this puzzle (base_points)
   timeBonus: number;                   // Bonus/penalty based on completion time
   timeTaken: number;                   // Total time in seconds for this checkpoint
-  mcqAnswerOptionId?: string;          // Which MCQ option was selected
+  mcqAnswerOptionId?: string | null;          // Which MCQ option was selected
   isFirstCheckpoint: boolean;          // Special handling for cp_0 (no MCQ, same start/end time)
 }
 
