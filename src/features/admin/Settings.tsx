@@ -110,7 +110,7 @@ export default function Settings() {
           size="large"
           className="w-full sm:w-auto"
         >
-          <span className="hidden sm:inline">Save </span>Settings
+          <span className="inline">Save </span>Settings
         </Button>
       </div>
 

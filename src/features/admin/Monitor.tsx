@@ -332,8 +332,6 @@ export default function Monitor() {
     return acc;
   }, {});
 
-  console.log("PUZZLE----",puzzleNameMap)
-
   const columns = [
     {
       title: "Team",

@@ -36,7 +36,16 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, Button, Typography, Progress, Alert, message, Spin, notification } from "antd";
+import {
+  Card,
+  Button,
+  Typography,
+  Progress,
+  Alert,
+  message,
+  Spin,
+  notification,
+} from "antd";
 import {
   QrcodeOutlined,
   ClockCircleOutlined,
@@ -194,7 +203,8 @@ export default function TeamGameFlow() {
       } else {
         api.error({
           message: "Invalid QR Code",
-          description: result.message || "Please scan the correct checkpoint code.",
+          description:
+            result.message || "Please scan the correct checkpoint code.",
           showProgress: true,
         });
       }
@@ -249,7 +259,7 @@ export default function TeamGameFlow() {
             id: result.puzzle.id,
             text: result.puzzle.text,
             imageURL: result.puzzle.imageURL,
-            hint: result.puzzle.hint, 
+            hint: result.puzzle.hint,
           };
         }
 
@@ -477,7 +487,9 @@ export default function TeamGameFlow() {
             >
               {getCurrentCheckpointNumber() > gameState.totalCheckpoints
                 ? "You completed all checkpoints"
-                : `Scan QR Code or Enter Code for Checkpoint ${getCurrentCheckpointNumber()}`}
+                : window.innerWidth <= 480
+                  ? `Scan or Enter Code CP-(${getCurrentCheckpointNumber()})`
+                  : `Scan QR Code or Enter Code for Checkpoint ${getCurrentCheckpointNumber()}`}
             </Button>
           </div>
         </Card>

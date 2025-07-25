@@ -229,9 +229,16 @@ export default function Puzzles() {
       dataIndex: "code",
       key: "code",
       render: (code: string) => (
-        <div className="flex items-center gap-2">
+        <div
+          className="flex items-center gap-2"
+          style={{
+            maxWidth: 120, // Adjust as needed for mobile
+            overflowX: "auto",
+            whiteSpace: "nowrap",
+          }}
+        >
           <QrcodeOutlined className="text-gray-500" />
-          <Text code className="text-sm">
+          <Text code className="text-sm" style={{ whiteSpace: "nowrap" }}>
             {code}
           </Text>
         </div>
@@ -311,7 +318,7 @@ export default function Puzzles() {
           size="large"
           className="w-full sm:w-auto"
         >
-          <span className="hidden sm:inline">Create New </span>Puzzle
+          <span className="inline">Create New </span>Puzzle
         </Button>
       </div>
 

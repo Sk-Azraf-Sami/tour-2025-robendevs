@@ -2,13 +2,11 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/auth'
 import { Layout, Menu, Button, Typography } from 'antd'
 import {
-  DashboardOutlined,
   QuestionCircleOutlined,
   PictureOutlined,
   TeamOutlined,
   SettingOutlined,
   MonitorOutlined,
-  PlayCircleOutlined,
   TrophyOutlined,
   LogoutOutlined
 } from '@ant-design/icons'
@@ -17,12 +15,12 @@ const { Sider } = Layout
 const { Title, Text } = Typography
 
 const menuItems = [
-  {
-    key: '/admin',
-    icon: <DashboardOutlined />,
-    label: 'Dashboard',
-    path: '/admin'
-  },
+  // {
+  //   key: '/admin',
+  //   icon: <DashboardOutlined />,
+  //   label: 'Dashboard',
+  //   path: '/admin'
+  // },
   {
     key: '/admin/mcqs',
     icon: <QuestionCircleOutlined />,
@@ -53,12 +51,12 @@ const menuItems = [
     label: 'Live Monitor',
     path: '/admin/monitor'
   },
-  {
-    key: '/admin/launch',
-    icon: <PlayCircleOutlined />,
-    label: 'Launch Game',
-    path: '/admin/launch'
-  }
+  // {
+  //   key: '/admin/launch',
+  //   icon: <PlayCircleOutlined />,
+  //   label: 'Launch Game',
+  //   path: '/admin/launch'
+  // }
 ]
 
 interface AdminSidebarProps {
