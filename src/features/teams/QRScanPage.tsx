@@ -36,20 +36,13 @@ export default function QRScanPage() {
   const handleManualSubmit = () => {
     if (!manualCode.trim()) return
 
-    // Simulate code validation
-    const validCodes = ['EXPLORER_STATUE_001', 'RED_DOOR_PUZZLE_002', 'LIBRARY_ENTRANCE_003']
-    const isValid = validCodes.includes(manualCode.toUpperCase())
-
-    if (isValid) {
-      setScanResult('success')
-      message.success('Code Verified! Checkpoint confirmed. Proceeding to MCQ.')
-      setTimeout(() => {
-        navigate('/team/mcq')
-      }, 1500)
-    } else {
-      setScanResult('error')
-      message.error('Invalid Code - Please check the code and try again.')
-    }
+    // For demo purposes - in production this would validate against backend
+    // For now, accept any non-empty code to proceed to MCQ
+    setScanResult('success')
+    message.success('Code Verified! Checkpoint confirmed. Proceeding to MCQ.')
+    setTimeout(() => {
+      navigate('/team/mcq')
+    }, 1500)
   }
 
   return (
@@ -147,7 +140,7 @@ export default function QRScanPage() {
             <div>
               <Text strong className="block mb-2 text-sm sm:text-base">Checkpoint Code</Text>
               <Input
-                placeholder="Enter code (e.g., EXPLORER_STATUE_001)"
+                placeholder="Enter checkpoint code"
                 value={manualCode}
                 onChange={(e) => setManualCode(e.target.value)}
                 className="font-mono text-sm sm:text-base"

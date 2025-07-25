@@ -167,9 +167,10 @@ export default function TeamGameFlow() {
       const result = await GameService.validateQRCode(user.id, qrCode);
 
       if (result.success && result.mcq) {
+        // All checkpoints (including first checkpoint cp_0) now require MCQ
         api.success({
           message: "QR Code Verified",
-          description: "Proceeding to next step.",
+          description: "Proceeding to MCQ.",
           showProgress: true,
         });
 
@@ -193,7 +194,7 @@ export default function TeamGameFlow() {
       } else {
         api.error({
           message: "Invalid QR Code",
-          description: "Please scan the correct checkpoint code.",
+          description: result.message || "Please scan the correct checkpoint code.",
           showProgress: true,
         });
       }
