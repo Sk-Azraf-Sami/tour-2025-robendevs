@@ -185,7 +185,15 @@ export default function Puzzles() {
         </Text>
         {record.hint && (
           <div>
-            <Text type="secondary" className="text-xs block mt-1">Hint: {record.hint}</Text>
+            <Text 
+            style={{
+            display: 'block',
+            maxWidth: 180,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}
+            type="secondary" className="text-xs block mt-1">  Hint: {record.hint.length > 40 ? `${record.hint.slice(0, 37)}...` : record.hint}</Text>
           </div>
         )}
       </div>
