@@ -513,257 +513,789 @@ export default function AuthDebugger() {
     }
   };
 
-  const initializeScanner = () => {
-    if (scannerRef.current) {
-      addQRScannerLog(
-        "Scanner Already Initialized",
-        {
-          scannerExists: !!scannerRef.current,
-        },
-        false
-      );
-      return;
-    }
-
-    if (!isComponentMountedRef.current) {
-      addQRScannerLog(
-        "Component Unmounted - Skipping Initialization",
-        {},
-        false
-      );
-      return;
-    }
-
+  // Enhanced camera diagnostics function
+  const runCameraDiagnostics = async () => {
     addQRScannerLog(
-      "Starting Scanner Initialization",
+      "🔍 Starting Camera Diagnostics",
       {
         timestamp: Date.now(),
         userAgent: navigator.userAgent,
-        windowSize: { width: window.innerWidth, height: window.innerHeight },
+        platform: navigator.platform,
       },
       true
     );
 
-    // Use a unique ID for this scanner instance to avoid conflicts
-    const scannerId = `qr-scanner-debug-${Date.now()}`;
+    try {
+      // Check browser support
+      const browserSupport = {
+        mediaDevices: !!navigator.mediaDevices,
+        getUserMedia: !!navigator.mediaDevices?.getUserMedia,
+        enumerateDevices: !!navigator.mediaDevices?.enumerateDevices,
+        permissions: 'permissions' in navigator,
+        serviceWorker: 'serviceWorker' in navigator,
+        isSecureContext: window.isSecureContext,
+      };
 
-    // Add a small delay to ensure DOM is ready
-    const timeout = setTimeout(() => {
-      if (!isComponentMountedRef.current) {
+      addQRScannerLog(
+        "🌐 Browser Support Check",
+        browserSupport,
+        browserSupport.mediaDevices && browserSupport.getUserMedia
+      );
+
+      if (!browserSupport.mediaDevices || !browserSupport.getUserMedia) {
         addQRScannerLog(
-          "Component Unmounted During Init - Aborting",
-          {},
+          "❌ Browser Not Supported",
+          { reason: "MediaDevices API not available" },
           false
         );
         return;
       }
 
-      // Get the scanner container element
-      const containerElement = scannerElementRef.current;
-      if (!containerElement) {
+      // Check for HTTPS requirement
+      if (!window.isSecureContext) {
         addQRScannerLog(
-          "Scanner Container Not Found",
-          {
-            refExists: !!scannerElementRef.current,
+          "⚠️ Insecure Context",
+          { 
+            protocol: window.location.protocol,
+            host: window.location.host,
+            warning: "Camera access requires HTTPS in production"
           },
           false
         );
-        return;
+      }
+
+      // Enumerate devices
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        
+        addQRScannerLog(
+          "📹 Available Devices",
+          {
+            totalDevices: devices.length,
+            videoInputs: videoDevices.length,
+            audioInputs: devices.filter(d => d.kind === 'audioinput').length,
+            audioOutputs: devices.filter(d => d.kind === 'audiooutput').length,
+            deviceDetails: videoDevices.map(d => ({
+              deviceId: d.deviceId.slice(0, 10) + '...',
+              label: d.label || 'Unlabeled Camera',
+              groupId: d.groupId?.slice(0, 10) + '...',
+            })),
+          },
+          videoDevices.length > 0
+        );
+      } catch (enumError) {
+        addQRScannerLog(
+          "❌ Device Enumeration Failed",
+          {
+            error: enumError instanceof Error ? {
+              name: enumError.name,
+              message: enumError.message,
+            } : enumError,
+          },
+          false
+        );
+      }
+
+      // Check permissions
+      if ('permissions' in navigator) {
+        try {
+          const permission = await navigator.permissions.query({ name: 'camera' as PermissionName });
+          addQRScannerLog(
+            "🔐 Permission Status",
+            {
+              state: permission.state,
+              name: permission.name,
+            },
+            permission.state === 'granted'
+          );
+        } catch (permError) {
+          addQRScannerLog(
+            "❌ Permission Query Failed",
+            {
+              error: permError instanceof Error ? permError.message : permError,
+            },
+            false
+          );
+        }
+      }
+
+      // Test basic camera access
+      try {
+        addQRScannerLog("🎥 Testing Camera Access", {}, true);
+        
+        const constraints = {
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 },
+          }
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        const videoTrack = stream.getVideoTracks()[0];
+        const settings = videoTrack.getSettings();
+        const capabilities = videoTrack.getCapabilities?.() || {};
+        
+        addQRScannerLog(
+          "✅ Camera Access Successful",
+          {
+            streamActive: stream.active,
+            trackCount: stream.getVideoTracks().length,
+            settings: {
+              deviceId: settings.deviceId?.slice(0, 10) + '...',
+              facingMode: settings.facingMode,
+              width: settings.width,
+              height: settings.height,
+              frameRate: settings.frameRate,
+            },
+            capabilities: {
+              facingMode: capabilities.facingMode,
+              width: capabilities.width,
+              height: capabilities.height,
+              frameRate: capabilities.frameRate,
+            },
+          },
+          true
+        );
+
+        // Test different facing modes
+        for (const facingMode of ['user', 'environment']) {
+          try {
+            const testStream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode }
+            });
+            
+            const track = testStream.getVideoTracks()[0];
+            const testSettings = track.getSettings();
+            
+            addQRScannerLog(
+              `📱 ${facingMode} Camera Test`,
+              {
+                facingMode: testSettings.facingMode,
+                width: testSettings.width,
+                height: testSettings.height,
+                deviceId: testSettings.deviceId?.slice(0, 10) + '...',
+              },
+              true
+            );
+            
+            testStream.getTracks().forEach(track => track.stop());
+          } catch (facingError) {
+            addQRScannerLog(
+              `❌ ${facingMode} Camera Failed`,
+              {
+                error: facingError instanceof Error ? facingError.message : facingError,
+              },
+              false
+            );
+          }
+        }
+
+        // Stop the test stream
+        stream.getTracks().forEach(track => track.stop());
+        
+        addQRScannerLog(
+          "🛑 Test Stream Stopped",
+          { 
+            tracksStoppedCount: stream.getVideoTracks().length,
+          },
+          true
+        );
+
+      } catch (accessError) {
+        addQRScannerLog(
+          "❌ Camera Access Failed",
+          {
+            error: accessError instanceof Error ? {
+              name: accessError.name,
+              message: accessError.message,
+            } : accessError,
+            errorType: accessError instanceof Error && accessError.name === 'NotAllowedError' 
+              ? 'PERMISSION_DENIED'
+              : accessError instanceof Error && accessError.name === 'NotFoundError'
+              ? 'NO_CAMERA_FOUND'
+              : accessError instanceof Error && accessError.name === 'NotReadableError'
+              ? 'CAMERA_IN_USE'
+              : 'OTHER',
+          },
+          false
+        );
+      }
+
+      // Test Html5QrcodeScanner availability
+      try {
+        addQRScannerLog(
+          "📚 Html5QrcodeScanner Check",
+          {
+            available: typeof Html5QrcodeScanner !== 'undefined',
+            constructor: !!Html5QrcodeScanner,
+            version: 'unknown',
+          },
+          typeof Html5QrcodeScanner !== 'undefined'
+        );
+      } catch (libraryError) {
+        addQRScannerLog(
+          "❌ Html5QrcodeScanner Check Failed",
+          {
+            error: libraryError instanceof Error ? libraryError.message : libraryError,
+          },
+          false
+        );
       }
 
       addQRScannerLog(
-        "Scanner Container Found",
+        "🎯 Camera Diagnostics Complete",
         {
-          elementExists: true,
-          elementChildren: containerElement.children.length,
+          timestamp: Date.now(),
+          overallStatus: "DIAGNOSTICS_COMPLETED",
         },
         true
       );
 
-      // Clear container and create a new div for the scanner
-      try {
-        containerElement.innerHTML = "";
-        const scannerDiv = document.createElement("div");
-        scannerDiv.id = scannerId;
-        scannerDiv.style.width = "100%";
-        scannerDiv.style.minHeight = "300px";
-        containerElement.appendChild(scannerDiv);
+    } catch (diagnosticsError) {
+      addQRScannerLog(
+        "💥 Diagnostics Error",
+        {
+          error: diagnosticsError instanceof Error ? {
+            name: diagnosticsError.name,
+            message: diagnosticsError.message,
+            stack: diagnosticsError.stack?.slice(0, 500),
+          } : diagnosticsError,
+        },
+        false
+      );
+    }
+  };
 
+  const initializeScanner = async () => {
+    try {
+      // Enhanced error catching wrapper
+      addQRScannerLog(
+        "🚀 Initialize Scanner Called",
+        {
+          timestamp: Date.now(),
+          scannerExists: !!scannerRef.current,
+          scannerInitialized,
+          scannerActive,
+          componentMounted: isComponentMountedRef.current,
+        },
+        true
+      );
+
+      if (scannerRef.current) {
         addQRScannerLog(
-          "Scanner Element Created",
+          "⚠️ Scanner Already Initialized",
           {
-            scannerId: scannerId,
-            elementCreated: true,
+            scannerExists: !!scannerRef.current,
+            scannerState: scannerActive ? "ACTIVE" : "INACTIVE",
+            scannerInitialized: scannerInitialized,
           },
-          true
+          false
         );
-      } catch (error) {
-        addQRScannerLog("Failed to Create Scanner Element", { error }, false);
         return;
       }
 
+      if (!isComponentMountedRef.current) {
+        addQRScannerLog(
+          "🚫 Component Unmounted - Skipping Initialization",
+          {
+            componentMounted: isComponentMountedRef.current,
+          },
+          false
+        );
+        return;
+      }
+
+      // Pre-flight checks
+      addQRScannerLog(
+        "🔍 Pre-flight Environment Check",
+        {
+          timestamp: Date.now(),
+          userAgent: navigator.userAgent,
+          windowSize: { width: window.innerWidth, height: window.innerHeight },
+          permissionState: cameraPermission,
+          documentReadyState: document.readyState,
+          locationHref: window.location.href,
+          mediaDevicesSupported: !!navigator.mediaDevices,
+          html5QrcodeAvailable: typeof Html5QrcodeScanner !== 'undefined',
+          containerRefExists: !!scannerElementRef.current,
+        },
+        true
+      );
+
+      // Check camera permissions first
       try {
-        // Mirror the actual QRScanner configuration
-        const screenWidth = window.innerWidth;
-        const qrBoxSize =
-          screenWidth <= 480 ? 180 : screenWidth <= 768 ? 200 : 220;
+        addQRScannerLog("🔐 Checking Camera Permissions", {}, true);
+        
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("MediaDevices not supported on this browser");
+        }
 
-        const config = {
-          fps: 10,
-          qrbox: { width: qrBoxSize, height: qrBoxSize },
-          aspectRatio: 1.0,
-          disableFlip: false,
-          rememberLastUsedCamera: true,
-          showTorchButtonIfSupported: true,
-          showZoomSliderIfSupported: true,
-          defaultZoomValueIfSupported: 2,
-        };
-
-        addQRScannerLog(
-          "Creating Scanner Instance",
-          {
-            scannerId: scannerId,
-            config: config,
-            screenWidth: screenWidth,
-            qrBoxSize: qrBoxSize,
-          },
-          true
-        );
-
-        const scanner = new Html5QrcodeScanner(
-          scannerId,
-          config,
-          false // verbose logging disabled for cleaner output
-        );
-
-        addQRScannerLog(
-          "Scanner Instance Created",
-          {
-            scannerType: "Html5QrcodeScanner",
-            hasScanner: !!scanner,
-          },
-          true
-        );
-
-        // Define success callback (mimics team flow)
-        const onScanSuccess = (decodedText: string, decodedResult: unknown) => {
-          if (!isComponentMountedRef.current) {
+        // Check if camera permission is available
+        if ("permissions" in navigator) {
+          try {
+            const permission = await navigator.permissions.query({
+              name: "camera" as PermissionName,
+            });
             addQRScannerLog(
-              "Scan Success but Component Unmounted",
-              { text: decodedText },
+              "🔐 Camera Permission Status",
+              { 
+                state: permission.state,
+                name: permission.name 
+              },
+              true
+            );
+          } catch (permError) {
+            addQRScannerLog(
+              "⚠️ Permission Query Failed",
+              { 
+                error: permError instanceof Error ? permError.message : permError 
+              },
               false
             );
-            return;
+          }
+        }
+      } catch (permissionError) {
+        addQRScannerLog(
+          "❌ Camera Permission Check Failed",
+          {
+            error: permissionError instanceof Error ? {
+              name: permissionError.name,
+              message: permissionError.message,
+            } : permissionError,
+          },
+          false
+        );
+        throw permissionError;
+      }
+
+    // Use a unique ID for this scanner instance to avoid conflicts
+    const scannerId = `qr-scanner-debug-${Date.now()}`;
+
+    addQRScannerLog(
+      "⏳ Setting DOM Preparation Timeout",
+      {
+        scannerId,
+        delay: "100ms",
+      },
+      true
+    );
+
+    // Add a small delay to ensure DOM is ready
+    const timeout = setTimeout(async () => {
+      try {
+        addQRScannerLog(
+          "🔄 DOM Timeout Handler Started",
+          {
+            componentMounted: isComponentMountedRef.current,
+            scannerId,
+          },
+          true
+        );
+
+        if (!isComponentMountedRef.current) {
+          addQRScannerLog(
+            "🚫 Component Unmounted During Init - Aborting",
+            {},
+            false
+          );
+          return;
+        }
+
+        // Get the scanner container element
+        const containerElement = scannerElementRef.current;
+        if (!containerElement) {
+          addQRScannerLog(
+            "❌ Scanner Container Not Found",
+            {
+              refExists: !!scannerElementRef.current,
+              scannerId,
+            },
+            false
+          );
+          return;
+        }
+
+        addQRScannerLog(
+          "✅ Scanner Container Found",
+          {
+            elementExists: true,
+            elementChildren: containerElement.children.length,
+            containerTagName: containerElement.tagName,
+            containerClasses: containerElement.className,
+            containerId: containerElement.id,
+          },
+          true
+        );
+
+        // Enhanced DOM manipulation with error catching
+        try {
+          addQRScannerLog("🧹 Clearing Container", {}, true);
+          
+          // Check for existing scanner elements
+          const existingScanner = containerElement.querySelector('[id*="qr-scanner"]');
+          if (existingScanner) {
+            addQRScannerLog(
+              "⚠️ Found Existing Scanner Element",
+              {
+                existingId: existingScanner.id,
+                existingClasses: existingScanner.className,
+              },
+              true
+            );
           }
 
+          // Safely clear container
+          while (containerElement.firstChild) {
+            try {
+              containerElement.removeChild(containerElement.firstChild);
+            } catch (removeError) {
+              addQRScannerLog(
+                "⚠️ Failed to Remove Child Element",
+                {
+                  error: removeError instanceof Error ? removeError.message : removeError,
+                  childNodeType: containerElement.firstChild?.nodeType,
+                  childNodeName: containerElement.firstChild?.nodeName,
+                },
+                false
+              );
+              break;
+            }
+          }
+
+          addQRScannerLog("✅ Container Cleared Successfully", {}, true);
+
+          const scannerDiv = document.createElement("div");
+          scannerDiv.id = scannerId;
+          scannerDiv.style.width = "100%";
+          scannerDiv.style.minHeight = "300px";
+          scannerDiv.style.position = "relative";
+          scannerDiv.style.overflow = "hidden";
+          
+          containerElement.appendChild(scannerDiv);
+
           addQRScannerLog(
-            "QR Code Scan Success",
+            "✅ Scanner Element Created",
             {
-              rawText: decodedText,
-              textLength: decodedText.length,
-              decodedResult: {
-                format: (decodedResult as { result?: { format?: string } })
-                  ?.result?.format,
+              scannerId: scannerId,
+              elementCreated: true,
+              parentElement: containerElement.tagName,
+              elementInDOM: !!document.getElementById(scannerId),
+            },
+            true
+          );
+
+          // Wait a moment for DOM to settle
+          await new Promise(resolve => setTimeout(resolve, 50));
+
+        } catch (domError) {
+          addQRScannerLog(
+            "❌ DOM Manipulation Failed", 
+            { 
+              error: domError instanceof Error ? {
+                name: domError.name,
+                message: domError.message,
+                stack: domError.stack?.slice(0, 300),
+              } : domError 
+            }, 
+            false
+          );
+          throw domError;
+        }
+
+        try {
+          // Enhanced configuration with error handling
+          addQRScannerLog(
+            "🔧 Configuring Scanner",
+            {
+              timestamp: Date.now(),
+              scannerId,
+            },
+            true
+          );
+
+          // Mirror the actual QRScanner configuration
+          const screenWidth = window.innerWidth;
+          const qrBoxSize =
+            screenWidth <= 480 ? 180 : screenWidth <= 768 ? 200 : 220;
+
+          const config = {
+            fps: 10,
+            qrbox: { width: qrBoxSize, height: qrBoxSize },
+            aspectRatio: 1.0,
+            disableFlip: false,
+            rememberLastUsedCamera: true,
+            showTorchButtonIfSupported: true,
+            showZoomSliderIfSupported: true,
+            defaultZoomValueIfSupported: 2,
+          };
+
+          addQRScannerLog(
+            "📋 Scanner Configuration",
+            {
+              scannerId: scannerId,
+              config: config,
+              screenWidth: screenWidth,
+              qrBoxSize: qrBoxSize,
+              elementFound: !!document.getElementById(scannerId),
+              html5QrcodeAvailable: !!Html5QrcodeScanner,
+            },
+            true
+          );
+
+          let scanner;
+          try {
+            addQRScannerLog("🏗️ Creating Scanner Instance", {}, true);
+            
+            scanner = new Html5QrcodeScanner(
+              scannerId,
+              config,
+              false // verbose logging disabled for cleaner output
+            );
+            
+            addQRScannerLog(
+              "✅ Scanner Instance Created",
+              {
+                scannerType: "Html5QrcodeScanner",
+                hasScanner: !!scanner,
+                scannerMethods: scanner ? Object.getOwnPropertyNames(Object.getPrototypeOf(scanner)).slice(0, 10) : [],
+                scannerState: scanner?.getState?.() || "unknown",
+              },
+              true
+            );
+          } catch (scannerCreateError) {
+            addQRScannerLog(
+              "❌ Failed to Create Scanner Instance",
+              {
+                error: scannerCreateError instanceof Error ? {
+                  name: scannerCreateError.name,
+                  message: scannerCreateError.message,
+                  stack: scannerCreateError.stack?.slice(0, 500),
+                } : scannerCreateError,
+                scannerId: scannerId,
+                configUsed: config,
+              },
+              false
+            );
+            throw scannerCreateError;
+          }
+
+          // Define success callback (mimics team flow)
+          const onScanSuccess = (decodedText: string, decodedResult: unknown) => {
+            try {
+              addQRScannerLog(
+                "📱 QR Scan Success Callback",
+                {
+                  componentMounted: isComponentMountedRef.current,
+                  textLength: decodedText.length,
+                  timestamp: Date.now(),
+                },
+                true
+              );
+
+              if (!isComponentMountedRef.current) {
+                addQRScannerLog(
+                  "⚠️ Scan Success but Component Unmounted",
+                  { text: decodedText },
+                  false
+                );
+                return;
+              }
+
+              addQRScannerLog(
+                "🎯 QR Code Scan Success",
+                {
+                  rawText: decodedText,
+                  textLength: decodedText.length,
+                  textPreview: decodedText.slice(0, 50) + (decodedText.length > 50 ? '...' : ''),
+                  decodedResult: {
+                    format: (decodedResult as { result?: { format?: string } })
+                      ?.result?.format,
+                    timestamp: Date.now(),
+                  },
+                },
+                true
+              );
+
+              setScannedCode(decodedText);
+
+              // Extract valid code using regex (mimic actual flow)
+              addQRScannerLog("🔍 Starting Code Extraction", {}, true);
+              
+              const extracted = extractValidCode(decodedText);
+              setExtractedCode(extracted);
+
+              addQRScannerLog(
+                "✅ Code Extraction Complete",
+                {
+                  original: decodedText.slice(0, 100) + (decodedText.length > 100 ? '...' : ''),
+                  extracted: extracted,
+                  wasExtracted: extracted !== decodedText,
+                  extractionSuccess: extracted.length > 0,
+                },
+                true
+              );
+
+              // Auto-fill manual code field (mimic actual flow)
+              setManualCode(extracted);
+              addQRScannerLog(
+                "📝 Manual Field Auto-filled",
+                {
+                  code: extracted,
+                  fieldUpdated: true,
+                },
+                true
+              );
+
+              // Simulate the team flow - validate the extracted code
+              debugValidateExtractedCode(extracted);
+            } catch (callbackError) {
+              addQRScannerLog(
+                "❌ Error in Scan Success Callback",
+                {
+                  error: callbackError instanceof Error ? {
+                    name: callbackError.name,
+                    message: callbackError.message,
+                  } : callbackError,
+                },
+                false
+              );
+            }
+          };
+
+          // Define error callback with enhanced error categorization
+          const onScanFailure = (error: string) => {
+            try {
+              // Categorize common scanner errors
+              const isNormalScanError = error.includes("NotFoundException") ||
+                                      error.includes("No MultiFormat Readers") ||
+                                      error.includes("QR code parse error") ||
+                                      error.includes("No QR code found");
+
+              const isPermissionError = error.includes("Permission") ||
+                                      error.includes("NotAllowed") ||
+                                      error.includes("getUserMedia");
+
+              const isDOMError = error.includes("removeChild") ||
+                               error.includes("appendChild") ||
+                               error.includes("getElementById");
+
+              if (!isNormalScanError) {
+                addQRScannerLog(
+                  `⚠️ Scan Error ${isPermissionError ? '(PERMISSION)' : isDOMError ? '(DOM)' : '(OTHER)'}`,
+                  {
+                    error: error,
+                    errorType: isPermissionError ? "PERMISSION" : isDOMError ? "DOM_MANIPULATION" : "OTHER",
+                    isNormalScanError,
+                    timestamp: Date.now(),
+                  },
+                  false
+                );
+              }
+            } catch (errorCallbackError) {
+              console.error("Error in scan failure callback:", errorCallbackError);
+            }
+          };
+
+          addQRScannerLog(
+            "🎬 Preparing Scanner Render",
+            {
+              hasSuccessCallback: !!onScanSuccess,
+              hasErrorCallback: !!onScanFailure,
+              scannerReady: !!scanner,
+              elementExists: !!document.getElementById(scannerId),
+              permissions: cameraPermission,
+            },
+            true
+          );
+
+          // Render the scanner with enhanced error handling
+          try {
+            addQRScannerLog("🎭 Rendering Scanner UI", {}, true);
+            
+            // Wrap render call in try-catch to catch React Router DOM conflicts
+            scanner.render(onScanSuccess, onScanFailure);
+            
+            addQRScannerLog(
+              "🎉 Scanner Rendered Successfully",
+              {
+                scannerState: "ACTIVE",
+                scannerId: scannerId,
+                renderTimestamp: Date.now(),
+                elementAfterRender: !!document.getElementById(scannerId),
+              },
+              true
+            );
+
+            // Set the scanner reference and state
+            scannerRef.current = scanner;
+            setScannerInitialized(true);
+            setScannerActive(true);
+
+            addQRScannerLog(
+              "🚀 Scanner Fully Initialized",
+              {
+                scannerInitialized: true,
+                scannerActive: true,
                 timestamp: Date.now(),
               },
-            },
-            true
-          );
+              true
+            );
 
-          setScannedCode(decodedText);
-
-          // Extract valid code using regex (mimic actual flow)
-          const extracted = extractValidCode(decodedText);
-          setExtractedCode(extracted);
-
-          addQRScannerLog(
-            "Code Extraction Complete",
-            {
-              original: decodedText,
-              extracted: extracted,
-              wasExtracted: extracted !== decodedText,
-              extractionSuccess: extracted.length > 0,
-            },
-            true
-          );
-
-          // Auto-fill manual code field (mimic actual flow)
-          setManualCode(extracted);
-          addQRScannerLog(
-            "Manual Field Auto-filled",
-            {
-              code: extracted,
-              fieldUpdated: true,
-            },
-            true
-          );
-
-          // Simulate the team flow - validate the extracted code
-          debugValidateExtractedCode(extracted);
-        };
-
-        // Define error callback
-        const onScanFailure = (error: string) => {
-          // Don't log every scan attempt failure as it's normal
-          if (
-            !error.includes("NotFoundException") &&
-            !error.includes("No MultiFormat Readers") &&
-            !error.includes("QR code parse error")
-          ) {
+          } catch (renderError) {
             addQRScannerLog(
-              "Scan Error",
+              "❌ Scanner Render Failed",
               {
-                error: error,
-                errorType: error.includes("Permission")
-                  ? "PERMISSION"
-                  : error.includes("NotFound")
-                  ? "NOT_FOUND"
-                  : error.includes("NotAllowed")
-                  ? "NOT_ALLOWED"
-                  : "OTHER",
+                error: renderError instanceof Error ? {
+                  name: renderError.name,
+                  message: renderError.message,
+                  stack: renderError.stack?.slice(0, 500),
+                } : renderError,
+                scannerId: scannerId,
+                elementExists: !!document.getElementById(scannerId),
+                permissionState: cameraPermission,
+                isDOMConflict: renderError instanceof Error && 
+                              (renderError.message.includes('removeChild') || 
+                               renderError.message.includes('NotFoundError') ||
+                               renderError.message.includes('React Router')),
               },
               false
             );
+            setScannerInitialized(false);
+            setScannerActive(false);
+            throw renderError;
           }
-        };
 
+        } catch (scannerConfigError) {
+          addQRScannerLog(
+            "❌ Scanner Configuration/Setup Failed",
+            {
+              error: scannerConfigError instanceof Error ? {
+                name: scannerConfigError.name,
+                message: scannerConfigError.message,
+                stack: scannerConfigError.stack?.slice(0, 500),
+              } : scannerConfigError,
+              timestamp: Date.now(),
+              scannerId,
+            },
+            false
+          );
+          setScannerInitialized(false);
+          setScannerActive(false);
+          throw scannerConfigError;
+        }
+
+      } catch (timeoutError) {
         addQRScannerLog(
-          "Rendering Scanner UI",
+          "❌ Timeout Handler Error",
           {
-            hasSuccessCallback: !!onScanSuccess,
-            hasErrorCallback: !!onScanFailure,
-          },
-          true
-        );
-
-        // Render the scanner
-        scanner.render(onScanSuccess, onScanFailure);
-
-        // Set the scanner reference and state
-        scannerRef.current = scanner;
-        setScannerInitialized(true);
-        setScannerActive(true);
-
-        addQRScannerLog(
-          "Scanner Rendered Successfully",
-          {
-            scannerState: "ACTIVE",
-            scannerId: scannerId,
-          },
-          true
-        );
-      } catch (error) {
-        addQRScannerLog(
-          "Scanner Initialization Failed",
-          {
-            error:
-              error instanceof Error
-                ? {
-                    name: error.name,
-                    message: error.message,
-                    stack: error.stack?.slice(0, 500),
-                  }
-                : error,
+            error: timeoutError instanceof Error ? {
+              name: timeoutError.name,
+              message: timeoutError.message,
+              stack: timeoutError.stack?.slice(0, 500),
+            } : timeoutError,
             timestamp: Date.now(),
           },
           false
@@ -774,71 +1306,178 @@ export default function AuthDebugger() {
     }, 100); // 100ms delay to ensure DOM is ready
 
     cleanupTimeoutRef.current = timeout;
+
+    } catch (initError) {
+      addQRScannerLog(
+        "💥 Critical Initialization Error",
+        {
+          error: initError instanceof Error ? {
+            name: initError.name,
+            message: initError.message,
+            stack: initError.stack?.slice(0, 500),
+          } : initError,
+          timestamp: Date.now(),
+          location: "initializeScanner main function",
+          cameraPermission,
+          scannerRef: !!scannerRef.current,
+          componentMounted: isComponentMountedRef.current,
+        },
+        false
+      );
+      setScannerInitialized(false);
+      setScannerActive(false);
+    }
   };
 
   const stopScanner = async () => {
+    addQRScannerLog(
+      "🛑 Stop Scanner Called",
+      { 
+        hasScannerRef: !!scannerRef.current,
+        scannerInitialized,
+        scannerActive,
+        timestamp: Date.now(),
+      },
+      true
+    );
+
     if (!scannerRef.current) {
-      addQRScannerLog("No Scanner to Stop", {}, false);
+      addQRScannerLog("⚠️ No Scanner to Stop", {}, false);
       return;
     }
 
     addQRScannerLog(
-      "Stopping Scanner",
-      { hasScanner: !!scannerRef.current },
-      true
-    );
-
-    try {
-      // Clear the scanner
-      await scannerRef.current.clear();
-      addQRScannerLog("Scanner Cleared Successfully", {}, true);
-    } catch (error) {
-      addQRScannerLog(
-        "Scanner Clear Error",
-        {
-          error: error instanceof Error ? error.message : error,
-        },
-        false
-      );
-    }
-
-    // Clean up the scanner element safely
-    try {
-      if (scannerElementRef.current) {
-        // Clear the container content safely
-        scannerElementRef.current.innerHTML = "";
-        addQRScannerLog(
-          "Scanner Container Cleared",
-          {
-            containerFound: true,
-          },
-          true
-        );
-      } else {
-        addQRScannerLog("Scanner Container Not Found for Cleanup", {}, false);
-      }
-    } catch (error) {
-      addQRScannerLog(
-        "Container Cleanup Error",
-        {
-          error: error instanceof Error ? error.message : error,
-        },
-        false
-      );
-    }
-
-    // Reset state
-    scannerRef.current = null;
-    setScannerActive(false);
-    setScannerInitialized(false);
-    addQRScannerLog(
-      "Scanner State Reset",
-      {
-        scannerActive: false,
-        scannerInitialized: false,
+      "🔄 Stopping Scanner Process",
+      { 
+        hasScanner: !!scannerRef.current,
+        scannerState: scannerRef.current?.getState?.() || "unknown",
       },
       true
     );
+
+    try {
+      // Enhanced scanner clearing with timeout
+      addQRScannerLog("🧹 Clearing Scanner Instance", {}, true);
+      
+      const clearPromise = scannerRef.current.clear();
+      
+      // Add timeout to clear operation
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Scanner clear timeout")), 5000)
+      );
+      
+      await Promise.race([clearPromise, timeoutPromise]);
+      
+      addQRScannerLog(
+        "✅ Scanner Cleared Successfully",
+        { 
+          clearDuration: Date.now(),
+        },
+        true
+      );
+    } catch (error) {
+      addQRScannerLog(
+        "❌ Scanner Clear Error",
+        {
+          error: error instanceof Error ? {
+            name: error.name,
+            message: error.message,
+            isTimeout: error.message.includes("timeout"),
+          } : error,
+        },
+        false
+      );
+    }
+
+    // Clean up the scanner element safely with enhanced error handling
+    try {
+      if (scannerElementRef.current) {
+        addQRScannerLog("🧹 Starting Container Cleanup", {}, true);
+        
+        // Check for any remaining scanner elements
+        const scannerElements = scannerElementRef.current.querySelectorAll('[id*="qr-scanner"]');
+        addQRScannerLog(
+          "🔍 Found Scanner Elements",
+          {
+            elementCount: scannerElements.length,
+            elementIds: Array.from(scannerElements).map(el => el.id),
+          },
+          true
+        );
+
+        // Safely clear the container content
+        try {
+          while (scannerElementRef.current.firstChild) {
+            try {
+              scannerElementRef.current.removeChild(scannerElementRef.current.firstChild);
+            } catch (removeError) {
+              addQRScannerLog(
+                "⚠️ Failed to Remove Child During Cleanup",
+                {
+                  error: removeError instanceof Error ? removeError.message : removeError,
+                  childType: scannerElementRef.current.firstChild?.nodeType,
+                },
+                false
+              );
+              break;
+            }
+          }
+          
+          addQRScannerLog(
+            "✅ Scanner Container Cleared",
+            {
+              containerFound: true,
+              childrenRemoved: true,
+            },
+            true
+          );
+        } catch (cleanupError) {
+          addQRScannerLog(
+            "❌ Container Cleanup Error",
+            {
+              error: cleanupError instanceof Error ? cleanupError.message : cleanupError,
+            },
+            false
+          );
+        }
+      } else {
+        addQRScannerLog("⚠️ Scanner Container Not Found for Cleanup", {}, false);
+      }
+    } catch (error) {
+      addQRScannerLog(
+        "❌ Container Cleanup Error",
+        {
+          error: error instanceof Error ? error.message : error,
+        },
+        false
+      );
+    }
+
+    // Reset state with logging
+    try {
+      scannerRef.current = null;
+      setScannerActive(false);
+      setScannerInitialized(false);
+      
+      addQRScannerLog(
+        "🔄 Scanner State Reset",
+        {
+          scannerActive: false,
+          scannerInitialized: false,
+          scannerRef: null,
+          timestamp: Date.now(),
+        },
+        true
+      );
+    } catch (stateError) {
+      addQRScannerLog(
+        "❌ State Reset Error",
+        {
+          error: stateError instanceof Error ? stateError.message : stateError,
+        },
+        false
+      );
+    }
   };
 
   const extractValidCode = (scannedText: string): string => {
@@ -961,6 +1600,53 @@ export default function AuthDebugger() {
   const clearQRScannerLogs = () => {
     setQRScannerLogs([]);
     addQRScannerLog("Logs Cleared", {}, true);
+  };
+
+  const copyAllQRScannerLogs = async () => {
+    try {
+      if (qrScannerLogs.length === 0) {
+        message.warning("No logs to copy");
+        return;
+      }
+
+      // Format logs for copying
+      const formattedLogs = qrScannerLogs.map((log) => {
+        const status = log.success ? "SUCCESS" : "ERROR";
+        const details = JSON.stringify(log.details, null, 2);
+        return `[${log.timestamp}] ${log.event} - ${status}\n${details}\n${'='.repeat(80)}`;
+      }).join('\n\n');
+
+      const logHeader = `QR Scanner Debug Logs Export
+Generated: ${new Date().toLocaleString()}
+Total Logs: ${qrScannerLogs.length}
+${'='.repeat(80)}\n\n`;
+
+      const fullLogText = logHeader + formattedLogs;
+
+      // Copy to clipboard
+      await navigator.clipboard.writeText(fullLogText);
+      
+      message.success(`Copied ${qrScannerLogs.length} logs to clipboard`);
+      
+      addQRScannerLog(
+        "📋 Logs Copied to Clipboard",
+        {
+          totalLogs: qrScannerLogs.length,
+          exportSize: fullLogText.length,
+          timestamp: Date.now(),
+        },
+        true
+      );
+    } catch (error) {
+      message.error("Failed to copy logs to clipboard");
+      addQRScannerLog(
+        "❌ Copy Logs Failed",
+        {
+          error: error instanceof Error ? error.message : error,
+        },
+        false
+      );
+    }
   };
 
   // Enhanced test for different QR patterns
@@ -1529,10 +2215,37 @@ export default function AuthDebugger() {
 
         <TabPane tab="📱 QR Scanner Testing" key="5">
           <Space direction="vertical" size="large" style={{ width: "100%" }}>
+            {/* Enhanced Debugging Guide */}
+            <Card title="🔧 QR Scanner Debugging Guide" size="small">
+              <Alert
+                message="Enhanced Debugging Available"
+                description={
+                  <div>
+                    <p><strong>Step-by-step debugging process:</strong></p>
+                    <ol style={{ marginLeft: "16px", marginBottom: "8px" }}>
+                      <li><strong>Run Diagnostics</strong> - Check browser support, camera availability, and permissions</li>
+                      <li><strong>Check Permissions</strong> - Verify camera access is granted</li>
+                      <li><strong>Initialize Scanner</strong> - Start the QR scanner with enhanced error logging</li>
+                      <li><strong>Monitor Logs</strong> - Watch the real-time logs below for detailed error information</li>
+                    </ol>
+                    <p><strong>Common Issues & Solutions:</strong></p>
+                    <ul style={{ marginLeft: "16px" }}>
+                      <li><strong>DOM conflicts:</strong> Look for "removeChild" errors - indicates React Router conflicts</li>
+                      <li><strong>Permission denied:</strong> Click "Check Permissions" to request camera access</li>
+                      <li><strong>Camera in use:</strong> Close other applications using the camera</li>
+                      <li><strong>No camera found:</strong> Ensure camera is connected and drivers are installed</li>
+                    </ul>
+                  </div>
+                }
+                type="info"
+                showIcon
+                style={{ marginBottom: "16px" }}
+              />
+            </Card>
             {/* Camera Permission Testing */}
             <Card title="📹 Camera Permission Testing" size="small">
-              <Row gutter={16} align="middle">
-                <Col span={8}>
+              <Row gutter={16} align="middle" style={{ marginBottom: "16px" }}>
+                <Col span={6}>
                   <Space direction="vertical">
                     <Text strong>Permission Status:</Text>
                     <Badge
@@ -1549,28 +2262,34 @@ export default function AuthDebugger() {
                     />
                   </Space>
                 </Col>
-                <Col span={8}>
+                <Col span={6}>
                   <Button
                     type="primary"
                     onClick={checkCameraPermissions}
                     loading={loading}
                   >
-                    Check Camera Permissions
+                    Check Permissions
                   </Button>
                 </Col>
-                <Col span={8}>
+                <Col span={6}>
+                  <Button
+                    type="default"
+                    onClick={runCameraDiagnostics}
+                    loading={loading}
+                  >
+                    🔍 Run Diagnostics
+                  </Button>
+                </Col>
+                <Col span={6}>
                   <Alert
                     message="Camera Info"
-                    description={`User Agent: ${
+                    description={`${
                       navigator.userAgent.includes("Mobile")
                         ? "Mobile"
                         : "Desktop"
-                    } | 
-                                 MediaDevices: ${
-                                   navigator.mediaDevices
-                                     ? "Supported"
-                                     : "Not Supported"
-                                 }`}
+                    } | MediaDevices: ${
+                      navigator.mediaDevices ? "✓" : "✗"
+                    }`}
                     type="info"
                     showIcon
                   />
@@ -1714,9 +2433,14 @@ export default function AuthDebugger() {
                   <Text strong>Real-time Scanner Events (Last 50)</Text>
                 </Col>
                 <Col span={12} style={{ textAlign: "right" }}>
-                  <Button onClick={clearQRScannerLogs} size="small">
-                    Clear Logs
-                  </Button>
+                  <Space>
+                    <Button onClick={copyAllQRScannerLogs} size="small" type="default">
+                      📋 Copy All Logs
+                    </Button>
+                    <Button onClick={clearQRScannerLogs} size="small">
+                      Clear Logs
+                    </Button>
+                  </Space>
                 </Col>
               </Row>
 
