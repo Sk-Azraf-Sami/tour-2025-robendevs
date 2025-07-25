@@ -36,7 +36,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, Button, Typography, Progress, Alert, message, Spin } from "antd";
+import { Card, Button, Typography, Progress, Alert, message, Spin, notification } from "antd";
 import {
   QrcodeOutlined,
   ClockCircleOutlined,
@@ -94,10 +94,7 @@ export default function TeamGameFlow() {
   });
   const [showScanner, setShowScanner] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [qrAlert, setQrAlert] = useState<{
-    type: "success" | "warning";
-    message: string;
-  } | null>(null);
+  const [api, contextHolder] = notification.useNotification();
 
   // Timer effect for elapsed time
   useEffect(() => {
@@ -170,9 +167,10 @@ export default function TeamGameFlow() {
       const result = await GameService.validateQRCode(user.id, qrCode);
 
       if (result.success && result.mcq) {
-        setQrAlert({
-          type: "success",
-          message: "✅ QR Code verified! Proceeding to question.",
+        api.success({
+          message: "QR Code Verified",
+          description: "Proceeding to next step.",
+          showProgress: true,
         });
 
         // Convert backend MCQ format to frontend format
@@ -193,10 +191,10 @@ export default function TeamGameFlow() {
           scannedCode: qrCode,
         }));
       } else {
-        setQrAlert({
-          type: "warning",
-          message:
-            "❌ Invalid QR code. Please scan the correct checkpoint code.",
+        api.error({
+          message: "Invalid QR Code",
+          description: "Please scan the correct checkpoint code.",
+          showProgress: true,
         });
       }
     } catch (error) {
@@ -362,6 +360,7 @@ export default function TeamGameFlow() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {contextHolder}
       {/* Header with Progress */}
       <div className="text-center px-2">
         <Title level={2} className="text-lg sm:text-xl md:text-2xl lg:text-3xl">
@@ -415,17 +414,6 @@ export default function TeamGameFlow() {
           </div>
         </div>
       </Card>
-
-      {qrAlert && (
-        <Alert
-          type={qrAlert.type}
-          message={qrAlert.message}
-          showIcon
-          closable
-          onClose={() => setQrAlert(null)}
-          className="mx-2 sm:mx-0 mb-2"
-        />
-      )}
 
       {/* Stage-specific Content */}
       {gameState.currentStage === "scan" && (
