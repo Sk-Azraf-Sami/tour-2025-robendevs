@@ -1,8 +1,8 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import Landing from '../components/Landing'
 import { LoginPage, TeamPage } from '../pages'
 import AdminPage from '../pages/AdminPage'
-import Dashboard from '../features/admin/Dashboard'
+//import Dashboard from '../features/admin/Dashboard'
 import MCQs from '../features/admin/MCQs'
 import Puzzles from '../features/admin/Puzzles'
 import Teams from '../features/admin/Teams'
@@ -67,7 +67,7 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Dashboard />,
+        element: <Navigate to="mcqs" replace />,
       },
       {
         path: 'mcqs',
