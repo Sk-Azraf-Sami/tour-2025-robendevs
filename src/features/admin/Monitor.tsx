@@ -15,7 +15,7 @@ import {
   message,
   Timeline,
   Statistic,
-  Modal
+  Modal,
 } from "antd";
 import {
   MonitorOutlined,
@@ -35,7 +35,7 @@ import { GameService } from "../../services/GameService";
 import { FirestoreService } from "../../services/FireStoreService";
 import type { Team, TeamLeg, Puzzle } from "../../types";
 import "./Monitor.css";
-
+import jsPDF from "jspdf";
 const { Title, Text } = Typography;
 
 interface TeamMonitoringData {
@@ -157,7 +157,7 @@ export default function Monitor() {
   ) => {
     // Double confirmation for reset action
     if (action === "reset") {
-      setResetConfirmVisible(true); 
+      setResetConfirmVisible(true);
       return;
     }
 
@@ -295,8 +295,8 @@ export default function Monitor() {
       ),
     },
     {
-      title: 'Current Checkpoint',
-      key: 'currentCheckpoint',
+      title: "Current Checkpoint",
+      key: "currentCheckpoint",
       render: (_: unknown, record: TeamMonitoringData) => (
         <div className="w-32">
           <Text strong className="text-sm">
@@ -304,13 +304,14 @@ export default function Monitor() {
           </Text>
           <br />
           <Text className="text-xs text-gray-500">
-            {record.timeOnCurrentCheckpoint && record.status === 'in_progress' 
+            {record.timeOnCurrentCheckpoint && record.status === "in_progress"
               ? `Active for ${record.timeOnCurrentCheckpoint}`
-              : record.status === 'completed' ? 'Finished' : 'Not started'
-            }
+              : record.status === "completed"
+                ? "Finished"
+                : "Not started"}
           </Text>
         </div>
-      )
+      ),
     },
     {
       title: "Progress",
@@ -488,24 +489,29 @@ export default function Monitor() {
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 sm:pb-4 space-y-3 sm:space-y-0">
         <Modal
-        title="Confirm Reset Game"
-        open={resetConfirmVisible}
-        onOk={() => executeGameControl("reset")}
-        onCancel={() => setResetConfirmVisible(false)}
-        okText="Yes, Reset"
-        okButtonProps={{ danger: true, loading: actionLoading === "reset" }}
-        cancelText="Cancel"
-      >
-        <p>
-          <strong>Are you sure you want to reset the game?</strong>
-        </p>
-        <p>
-          This will <span style={{ color: "red" }}>permanently erase all team progress</span> and cannot be undone.
-        </p>
-        <p>
-          All teams will be set back to the starting checkpoint and all points/times will be cleared.
-        </p>
-      </Modal>
+          title="Confirm Reset Game"
+          open={resetConfirmVisible}
+          onOk={() => executeGameControl("reset")}
+          onCancel={() => setResetConfirmVisible(false)}
+          okText="Yes, Reset"
+          okButtonProps={{ danger: true, loading: actionLoading === "reset" }}
+          cancelText="Cancel"
+        >
+          <p>
+            <strong>Are you sure you want to reset the game?</strong>
+          </p>
+          <p>
+            This will{" "}
+            <span style={{ color: "red" }}>
+              permanently erase all team progress
+            </span>{" "}
+            and cannot be undone.
+          </p>
+          <p>
+            All teams will be set back to the starting checkpoint and all
+            points/times will be cleared.
+          </p>
+        </Modal>
         <div>
           <Title
             level={2}
@@ -533,6 +539,39 @@ export default function Monitor() {
             type="default"
             size="small"
             className="text-xs sm:text-sm"
+            onClick={() => {
+              const doc = new jsPDF();
+              doc.setFontSize(12);
+              doc.text("Teams Monitoring Data", 10, 10);
+
+              let y = 20;
+              teams.forEach((team, idx) => {
+                doc.text(
+                  `#${idx + 1} ${team.username} (ID: ${team.teamId})`,
+                  10,
+                  y
+                );
+                y += 7;
+                doc.text(
+                  `Status: ${team.status}, Points: ${team.totalPoints}, Progress: ${team.completionPercentage}%`,
+                  12,
+                  y
+                );
+                y += 7;
+                doc.text(
+                  `Current Checkpoint: ${puzzleNameMap[team.currentCheckpoint]}`,
+                  12,
+                  y
+                );
+                y += 10;
+                if (y > 270) {
+                  doc.addPage();
+                  y = 20;
+                }
+              });
+
+              doc.save(`teams-monitoring-data-${new Date().toISOString()}.pdf`);
+            }}
           >
             <span className="hidden sm:inline">Export Data</span>
           </Button>
@@ -821,7 +860,10 @@ export default function Monitor() {
                 <Card size="small" title="Current Checkpoint">
                   <Descriptions column={1} size="small">
                     <Descriptions.Item label="Checkpoint">
-                      <Text strong>{puzzleNameMap[selectedTeam.currentCheckpoint] || selectedTeam.currentCheckpointName}</Text>
+                      <Text strong>
+                        {puzzleNameMap[selectedTeam.currentCheckpoint] ||
+                          selectedTeam.currentCheckpointName}
+                      </Text>
                     </Descriptions.Item>
                     <Descriptions.Item label="Started At">
                       {selectedTeam.currentCheckpointStartTime}
@@ -867,7 +909,9 @@ export default function Monitor() {
                 <Descriptions column={1} size="small">
                   <Descriptions.Item label="Checkpoint">
                     <Text strong>
-                      {puzzleNameMap[selectedTeam.lastCompletedCheckpoint.checkpoint] || selectedTeam.lastCompletedCheckpoint.checkpoint}
+                      {puzzleNameMap[
+                        selectedTeam.lastCompletedCheckpoint.checkpoint
+                      ] || selectedTeam.lastCompletedCheckpoint.checkpoint}
                     </Text>
                   </Descriptions.Item>
                   <Descriptions.Item label="Completed At">
@@ -1050,7 +1094,8 @@ export default function Monitor() {
                           render: (_, leg: TeamLeg) => (
                             <div className="min-w-[120px]">
                               <Text strong className="text-sm">
-                                {puzzleNameMap[leg.checkpoint] || leg.checkpoint}
+                                {puzzleNameMap[leg.checkpoint] ||
+                                  leg.checkpoint}
                               </Text>
                               <Tag
                                 color={getCheckpointStatusColor(
