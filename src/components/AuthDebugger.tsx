@@ -821,6 +821,9 @@ export default function AuthDebugger() {
           mediaDevicesSupported: !!navigator.mediaDevices,
           html5QrcodeAvailable: typeof Html5QrcodeScanner !== 'undefined',
           containerRefExists: !!scannerElementRef.current,
+          // Try to get library version if available
+          html5QrcodeVersion: (window as unknown as Record<string, unknown>).__HTML5_QRCODE_VERSION__ || 'unknown',
+          html5QrcodeConstructor: Html5QrcodeScanner?.name || 'unknown',
         },
         true
       );
@@ -990,6 +993,31 @@ export default function AuthDebugger() {
           // Wait a moment for DOM to settle
           await new Promise(resolve => setTimeout(resolve, 50));
 
+          // Final verification before scanner creation
+          const finalElementCheck = document.getElementById(scannerId);
+          if (!finalElementCheck) {
+            throw new Error(`Critical: Element ${scannerId} disappeared from DOM before scanner creation`);
+          }
+          
+          addQRScannerLog(
+            "🔍 Final Pre-Scanner Element Check", 
+            {
+              elementId: scannerId,
+              elementExists: !!finalElementCheck,
+              elementParentExists: !!finalElementCheck.parentElement,
+              elementDimensions: {
+                width: finalElementCheck.offsetWidth,
+                height: finalElementCheck.offsetHeight,
+              },
+              elementStyles: {
+                display: getComputedStyle(finalElementCheck).display,
+                visibility: getComputedStyle(finalElementCheck).visibility,
+                position: getComputedStyle(finalElementCheck).position,
+              },
+            }, 
+            true
+          );
+
         } catch (domError) {
           addQRScannerLog(
             "❌ DOM Manipulation Failed", 
@@ -1030,6 +1058,7 @@ export default function AuthDebugger() {
             showTorchButtonIfSupported: true,
             showZoomSliderIfSupported: true,
             defaultZoomValueIfSupported: 2,
+            supportedScanTypes: [0, 1], // QR_CODE and DATA_MATRIX
           };
 
           addQRScannerLog(
@@ -1049,11 +1078,105 @@ export default function AuthDebugger() {
           try {
             addQRScannerLog("🏗️ Creating Scanner Instance", {}, true);
             
-            scanner = new Html5QrcodeScanner(
-              scannerId,
-              config,
-              false // verbose logging disabled for cleaner output
+            // Check that the element exists and is ready
+            const targetElement = document.getElementById(scannerId);
+            if (!targetElement) {
+              throw new Error(`Target element with ID ${scannerId} not found in DOM`);
+            }
+            
+            addQRScannerLog(
+              "✅ Target Element Verified",
+              {
+                elementId: scannerId,
+                elementExists: true,
+                elementParent: targetElement.parentElement?.tagName,
+                elementRect: {
+                  width: targetElement.offsetWidth,
+                  height: targetElement.offsetHeight,
+                },
+              },
+              true
             );
+            
+            // Verify Html5QrcodeScanner is available
+            if (typeof Html5QrcodeScanner === 'undefined') {
+              throw new Error("Html5QrcodeScanner is not available - check if html5-qrcode library is loaded");
+            }
+            
+            addQRScannerLog(
+              "✅ Html5QrcodeScanner Available",
+              {
+                constructorType: typeof Html5QrcodeScanner,
+                prototype: Object.getOwnPropertyNames(Html5QrcodeScanner.prototype).slice(0, 5),
+                version: "2.3.8", // Known from package.json
+                constructorLength: Html5QrcodeScanner.length, // Number of required parameters
+              },
+              true
+            );
+            
+            // Try creating scanner with more detailed error info
+            try {
+              scanner = new Html5QrcodeScanner(
+                scannerId,
+                config,
+                false // verbose logging disabled for cleaner output
+              );
+            } catch (constructorError) {
+              // Log constructor-specific error details
+              addQRScannerLog(
+                "❌ Constructor Error Details",
+                {
+                  constructorError: constructorError instanceof Error ? {
+                    name: constructorError.name,
+                    message: constructorError.message,
+                    stack: constructorError.stack?.slice(0, 300),
+                  } : constructorError,
+                  scannerId,
+                  config,
+                  targetElementInDOM: !!document.getElementById(scannerId),
+                  Html5QrcodeScannerAvailable: typeof Html5QrcodeScanner !== 'undefined',
+                },
+                false
+              );
+              
+              // Try with minimal configuration as fallback
+              addQRScannerLog("🔄 Attempting Fallback Configuration", {}, true);
+              
+              try {
+                const fallbackConfig = {
+                  fps: 10,
+                  qrbox: { width: 250, height: 250 },
+                };
+                
+                scanner = new Html5QrcodeScanner(
+                  scannerId,
+                  fallbackConfig,
+                  false
+                );
+                
+                addQRScannerLog(
+                  "✅ Fallback Scanner Created",
+                  {
+                    fallbackConfig,
+                    scannerCreated: !!scanner,
+                  },
+                  true
+                );
+                
+              } catch (fallbackError) {
+                addQRScannerLog(
+                  "❌ Fallback Scanner Creation Failed",
+                  {
+                    fallbackError: fallbackError instanceof Error ? {
+                      name: fallbackError.name,
+                      message: fallbackError.message,
+                    } : fallbackError,
+                  },
+                  false
+                );
+                throw constructorError; // Throw original error
+              }
+            }
             
             addQRScannerLog(
               "✅ Scanner Instance Created",
@@ -1076,6 +1199,8 @@ export default function AuthDebugger() {
                 } : scannerCreateError,
                 scannerId: scannerId,
                 configUsed: config,
+                html5QrcodeAvailable: typeof Html5QrcodeScanner !== 'undefined',
+                elementExists: !!document.getElementById(scannerId),
               },
               false
             );
@@ -1213,18 +1338,79 @@ export default function AuthDebugger() {
 
           // Render the scanner with enhanced error handling
           try {
-            addQRScannerLog("🎭 Rendering Scanner UI", {}, true);
+            addQRScannerLog("🎭 Rendering Scanner UI", {
+              renderMethod: 'scanner.render',
+              callbacksReady: typeof onScanSuccess === 'function' && typeof onScanFailure === 'function',
+              preRenderState: scanner?.getState?.() || "unknown",
+            }, true);
             
-            // Wrap render call in try-catch to catch React Router DOM conflicts
-            scanner.render(onScanSuccess, onScanFailure);
+            // Check scanner state before rendering
+            const currentState = scanner?.getState?.();
+            if (currentState && String(currentState) !== '0') { // Convert to string for comparison
+              addQRScannerLog(
+                "⚠️ Scanner Not in Initial State",
+                {
+                  currentState,
+                  expectedState: 'NOT_STARTED',
+                  stateValue: String(currentState),
+                },
+                false
+              );
+            }
+            
+            // Wrap render call in try-catch to catch initialization errors
+            const renderPromise = new Promise<void>((resolve, reject) => {
+              let resolved = false;
+              
+              const resolveOnce = () => {
+                if (!resolved) {
+                  resolved = true;
+                  resolve();
+                }
+              };
+              
+              const rejectOnce = (error: unknown) => {
+                if (!resolved) {
+                  resolved = true;
+                  reject(error);
+                }
+              };
+              
+              try {
+                scanner.render(
+                  (decodedText: string, decodedResult: unknown) => {
+                    onScanSuccess(decodedText, decodedResult);
+                    // Don't resolve here as this is an ongoing scan callback
+                  },
+                  (error: string) => {
+                    onScanFailure(error);
+                    // Don't reject here as scan failures are normal
+                  }
+                );
+                
+                // Resolve immediately if render call succeeds
+                resolveOnce();
+                
+              } catch (renderException) {
+                rejectOnce(renderException);
+              }
+            });
+            
+            // Add timeout to prevent hanging
+            const timeoutPromise = new Promise<void>((_, reject) => {
+              setTimeout(() => reject(new Error("Scanner render timeout")), 5000);
+            });
+            
+            await Promise.race([renderPromise, timeoutPromise]);
             
             addQRScannerLog(
               "🎉 Scanner Rendered Successfully",
               {
-                scannerState: "ACTIVE",
+                scannerState: scanner?.getState?.() || "unknown",
                 scannerId: scannerId,
                 renderTimestamp: Date.now(),
                 elementAfterRender: !!document.getElementById(scannerId),
+                scannerContainerChildren: document.getElementById(scannerId)?.children.length || 0,
               },
               true
             );
@@ -1239,6 +1425,7 @@ export default function AuthDebugger() {
               {
                 scannerInitialized: true,
                 scannerActive: true,
+                finalState: scanner?.getState?.() || "unknown",
                 timestamp: Date.now(),
               },
               true
@@ -1256,10 +1443,15 @@ export default function AuthDebugger() {
                 scannerId: scannerId,
                 elementExists: !!document.getElementById(scannerId),
                 permissionState: cameraPermission,
+                scannerState: scanner?.getState?.() || "unknown",
                 isDOMConflict: renderError instanceof Error && 
                               (renderError.message.includes('removeChild') || 
                                renderError.message.includes('NotFoundError') ||
                                renderError.message.includes('React Router')),
+                isPermissionError: renderError instanceof Error &&
+                                 (renderError.message.includes('Permission') ||
+                                  renderError.message.includes('NotAllowed') ||
+                                  renderError.message.includes('getUserMedia')),
               },
               false
             );
