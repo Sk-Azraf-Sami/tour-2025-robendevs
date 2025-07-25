@@ -7,6 +7,7 @@ import {
   TrophyOutlined,
   UserSwitchOutlined,
   SettingOutlined,
+  QrcodeOutlined
 } from "@ant-design/icons";
 import { useAuth } from "../contexts/auth";
 import { NavigationService } from "../services/NavigationService";
@@ -276,7 +277,7 @@ export default function LoginPage() {
           <Link to="/qr-test">
             <Button
               type="primary"
-              icon={<UserSwitchOutlined />}
+              icon={<QrcodeOutlined/>}
               className="!bg-[#555555] !border-0 !text-white hover:!bg-[#312f2f] font-semibold shadow-lg transition-all"
               size="large"
               style={{
