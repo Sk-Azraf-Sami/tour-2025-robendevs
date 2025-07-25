@@ -11,11 +11,10 @@ export class AuthService {
     try {
       // For teams, we'll use custom authentication since they don't have email
       const teams = await FirestoreService.getAllTeams();
-      console.log("teamssss",teams)
+      //console.log("teamssss",teams)
       const team = teams.find(
         (t) => t.username === username && t.passwordHash === password
       );
-      console.log(username, password);
       return team || null;
     } catch (error) {
       console.error("Team login error:", error);

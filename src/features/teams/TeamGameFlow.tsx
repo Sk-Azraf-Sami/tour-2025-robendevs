@@ -94,6 +94,10 @@ export default function TeamGameFlow() {
   });
   const [showScanner, setShowScanner] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [qrAlert, setQrAlert] = useState<{
+    type: "success" | "warning";
+    message: string;
+  } | null>(null);
 
   // Timer effect for elapsed time
   useEffect(() => {
@@ -166,7 +170,10 @@ export default function TeamGameFlow() {
       const result = await GameService.validateQRCode(user.id, qrCode);
 
       if (result.success && result.mcq) {
-        message.success("QR Code verified! Proceeding to question.");
+        setQrAlert({
+          type: "success",
+          message: "✅ QR Code verified! Proceeding to question.",
+        });
 
         // Convert backend MCQ format to frontend format
         const formattedMCQ: MCQData = {
@@ -186,7 +193,11 @@ export default function TeamGameFlow() {
           scannedCode: qrCode,
         }));
       } else {
-        message.error(result.message);
+        setQrAlert({
+          type: "warning",
+          message:
+            "❌ Invalid QR code. Please scan the correct checkpoint code.",
+        });
       }
     } catch (error) {
       console.error("QR validation failed:", error);
@@ -371,7 +382,7 @@ export default function TeamGameFlow() {
               Overall Progress
             </Text>
             <Text type="secondary" className="text-xs sm:text-sm">
-              {getProgressPercentage().toFixed(2)}% Complete
+              {parseFloat(getProgressPercentage().toFixed(2))}% Complete
             </Text>
           </div>
           <Progress
@@ -404,6 +415,17 @@ export default function TeamGameFlow() {
           </div>
         </div>
       </Card>
+
+      {qrAlert && (
+        <Alert
+          type={qrAlert.type}
+          message={qrAlert.message}
+          showIcon
+          closable
+          onClose={() => setQrAlert(null)}
+          className="mx-2 sm:mx-0 mb-2"
+        />
+      )}
 
       {/* Stage-specific Content */}
       {gameState.currentStage === "scan" && (
