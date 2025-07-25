@@ -118,22 +118,6 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
     setIsScanning(false)
   }
 
-  // MOCK QR SCANNER - For development testing
-  const handleMockScan = (code: string) => {
-    // Simulate the same behavior as real QR scanning
-    const validCode = extractValidCode(code)
-    console.log("Mock QR Code scanned:", code, "-> Extracted:", validCode)
-    
-    // Stop any ongoing scanning
-    stopScan()
-    
-    // Switch to manual entry mode and populate with extracted code
-    setScannedRawCode(code)
-    setManualCode(validCode)
-    setScanMethod('manual')
-    setShowScannedResult(true)
-    setError('')
-  }
 
   const handleManualSubmit = async () => {
     if (!manualCode.trim()) {
@@ -160,14 +144,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
     }
   }
 
-  // Mock QR codes for different checkpoint scenarios (for development testing)
-  // These should match the actual codes stored in the database puzzles
-  const mockQRCodes = [
-    { label: '🟢 Valid: Starting Checkpoint (cp_0)', code: 'PUZZLE_717316' },
-    { label: '🟡 Valid: Checkpoint 2 (cp_2)', code: 'EXPLORER_STATUE_001' },
-    { label: '� Valid: Checkpoint 3 (cp_3)', code: 'RED_DOOR_PUZZLE_002' },
-    { label: '� Invalid: Wrong Checkpoint Code', code: 'INVALID_CODE_456' },
-  ]
+
 
   const handleClose = () => {
     stopScan()
@@ -287,24 +264,6 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                   : "Make sure to allow camera permissions when prompted"
                 }
               </Text>
-              
-              {/* Mock scan buttons for development */}
-              <div className="space-y-2">
-                <Text className="text-xs text-gray-500 block">Development Testing:</Text>
-                <div className="grid grid-cols-1 gap-1">
-                  {mockQRCodes.map((mock, index) => (
-                    <Button 
-                      key={index}
-                      type="dashed" 
-                      onClick={() => handleMockScan(mock.code)}
-                      className="w-full text-xs min-h-[36px]"
-                      size="small"
-                    >
-                      {mock.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -352,7 +311,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
               <div>
                 <Text strong className="block mb-2 text-sm sm:text-base">Checkpoint Code:</Text>
                 <Input
-                  placeholder="Enter code (e.g., PUZZLE_717316)"
+                  placeholder="Enter checkpoint code"
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
                   className="font-mono text-sm sm:text-base"
@@ -419,38 +378,6 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             icon={<CloseOutlined />}
             onClick={handleClose}
             className="flex-1 min-h-[48px] text-sm sm:text-base"
-          >
-            Cancel
-          </Button>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-gray-600 text-sm">
-            Position the QR code within the frame to scan
-          </p>
-          
-          {/* Mock scan buttons for development */}
-          <div className="space-y-2">
-            {mockQRCodes.map((mock, index) => (
-              <Button 
-                key={index}
-                type="dashed" 
-                onClick={() => handleMockScan(mock.code)}
-                className="w-full text-xs"
-                size="small"
-              >
-                {mock.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <Button 
-            type="default" 
-            icon={<CloseOutlined />}
-            onClick={onClose}
-            className="flex-1"
           >
             Cancel
           </Button>
