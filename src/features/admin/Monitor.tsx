@@ -15,6 +15,7 @@ import {
   message,
   Timeline,
   Statistic,
+  Modal
 } from "antd";
 import {
   MonitorOutlined,
@@ -107,6 +108,7 @@ export default function Monitor() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
+  const [resetConfirmVisible, setResetConfirmVisible] = useState(false);
 
   // Real-time data fetching
   const fetchTeamsData = async () => {
@@ -155,61 +157,7 @@ export default function Monitor() {
   ) => {
     // Double confirmation for reset action
     if (action === "reset") {
-      // Modal.confirm({
-      //   title: 'Reset Game Progress',
-      //   icon: <ExclamationCircleOutlined />,
-      //   content: (
-      //     <div>
-      //       <p><strong>⚠️ WARNING: This action cannot be undone!</strong></p>
-      //       <p>This will:</p>
-      //       <ul style={{ marginLeft: '20px', marginTop: '10px' }}>
-      //         <li>Reset all team progress to 0</li>
-      //         <li>Clear all checkpoint completions</li>
-      //         <li>Reset all points and times</li>
-      //         <li>Stop the current game</li>
-      //       </ul>
-      //       <p style={{ marginTop: '15px', color: '#ff4d4f' }}>
-      //         Are you absolutely sure you want to reset the entire game?
-      //       </p>
-      //     </div>
-      //   ),
-      //   okText: 'Yes, Reset Game',
-      //   okType: 'danger',
-      //   cancelText: 'Cancel',
-      //   onOk() {
-      //     // Second confirmation with text input
-      //     let confirmationInput = '';
-
-      //     Modal.confirm({
-      //       title: 'Final Confirmation Required',
-      //       icon: <WarningOutlined style={{ color: '#ff4d4f' }} />,
-      //       content: (
-      //         <div>
-      //           <p><strong>🚨 FINAL WARNING</strong></p>
-      //           <p>You are about to permanently delete all game progress for <strong>{teams.length} teams</strong>.</p>
-      //           <p style={{ marginTop: '15px' }}>To confirm this action, please type <strong>"RESET GAME"</strong> in the field below:</p>
-      //           <Input
-      //             placeholder="Type 'RESET GAME' to confirm"
-      //             onChange={(e) => { confirmationInput = e.target.value; }}
-      //             style={{ marginTop: '10px' }}
-      //           />
-      //         </div>
-      //       ),
-      //       okText: 'Confirm Reset',
-      //       okType: 'danger',
-      //       cancelText: 'Cancel',
-      //       onOk() {
-      //         if (confirmationInput.toUpperCase() === 'RESET GAME') {
-      //           executeGameControl('reset');
-      //         } else {
-      //           message.error('Confirmation text does not match. Reset cancelled.');
-      //           return Promise.reject('Confirmation failed');
-      //         }
-      //       }
-      //     });
-      //   }
-      // });
-      executeGameControl("reset");
+      setResetConfirmVisible(true); 
       return;
     }
 
@@ -252,6 +200,7 @@ export default function Monitor() {
       message.error(`Failed to ${action} game`);
     } finally {
       setActionLoading(null);
+      if (action === "reset") setResetConfirmVisible(false);
     }
   };
 
@@ -538,6 +487,25 @@ export default function Monitor() {
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 sm:pb-4 space-y-3 sm:space-y-0">
+        <Modal
+        title="Confirm Reset Game"
+        open={resetConfirmVisible}
+        onOk={() => executeGameControl("reset")}
+        onCancel={() => setResetConfirmVisible(false)}
+        okText="Yes, Reset"
+        okButtonProps={{ danger: true, loading: actionLoading === "reset" }}
+        cancelText="Cancel"
+      >
+        <p>
+          <strong>Are you sure you want to reset the game?</strong>
+        </p>
+        <p>
+          This will <span style={{ color: "red" }}>permanently erase all team progress</span> and cannot be undone.
+        </p>
+        <p>
+          All teams will be set back to the starting checkpoint and all points/times will be cleared.
+        </p>
+      </Modal>
         <div>
           <Title
             level={2}
