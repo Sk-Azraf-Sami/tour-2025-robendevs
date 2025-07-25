@@ -159,7 +159,7 @@ export class GameService {
     if (currentPuzzle.code !== qrCode) {
       return { 
         success: false, 
-        message: `Wrong QR code! You need to find the QR code: "${currentPuzzle.code}". This QR code belongs to a different puzzle.` 
+        message: `Wrong QR code. Please try again.` 
       };
     }
 
