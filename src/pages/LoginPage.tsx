@@ -20,19 +20,19 @@ export default function LoginPage() {
     }
   }, [user, isLoading, navigate])
 
-  const handleTeamSubmit = async (values: { email: string; password: string }) => {
+  const handleTeamSubmit = async (values: { username: string; password: string }) => {
     setError('')
-    const success = await login(values.email, values.password)
+    const success = await login(values.username, values.password)
     if (!success) {
       setError('Invalid email or password')
     }
   }
 
-  const handleAdminSubmit = async (values: { email: string; password: string }) => {
+  const handleAdminSubmit = async (values: { username: string; password: string }) => {
     setError('')
-    const success = await login(values.email, values.password)
+    const success = await login(values.username, values.password)
     if (!success) {
-      setError('Invalid email or password')
+      setError('Invalid username or password')
     }
   }
 
@@ -88,16 +88,16 @@ export default function LoginPage() {
 
                     <Form onFinish={handleTeamSubmit} layout="vertical" size="large">
                       <Form.Item
-                        label="Email"
-                        name="email"
+                        label="Username"
+                        name="username"
                         rules={[
-                          { required: true, message: 'Please input your email!' },
-                          { type: 'email', message: 'Please enter a valid email!' }
+                          { required: true, message: 'Please input your username!' },
+                          { type: 'string', message: 'Please enter a valid username!' }
                         ]}
                       >
                         <Input 
                           prefix={<UserOutlined />}
-                          placeholder="team@example.com"
+                          placeholder="Team083"
                         />
                       </Form.Item>
 
@@ -152,16 +152,16 @@ export default function LoginPage() {
 
                     <Form onFinish={handleAdminSubmit} layout="vertical" size="large">
                       <Form.Item
-                        label="Email"
-                        name="email"
+                        label="Username"
+                        name="username"
                         rules={[
-                          { required: true, message: 'Please input your email!' },
-                          { type: 'email', message: 'Please enter a valid email!' }
+                          { required: true, message: 'Please input your username!' },
+                          { type: 'string', message: 'Please enter a valid username!' }
                         ]}
                       >
                         <Input 
                           prefix={<UserOutlined />}
-                          placeholder="admin@robendevs.com"
+                          placeholder="admin083"
                         />
                       </Form.Item>
 

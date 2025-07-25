@@ -29,7 +29,6 @@ export class AuthService {
     try {
       // Fetch admin by username from Firestore
       const admins = await FirestoreService.getAllAdmins();
-      console.log("adminssss",admins)
       const admin = admins.find(
         (a) =>
           a.username === username &&
