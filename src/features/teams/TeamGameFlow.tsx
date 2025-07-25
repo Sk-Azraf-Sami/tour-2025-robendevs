@@ -248,7 +248,7 @@ export default function TeamGameFlow() {
             id: result.puzzle.id,
             text: result.puzzle.text,
             imageURL: result.puzzle.imageURL,
-            hint: result.puzzle.text, // Use text as hint for now
+            hint: result.puzzle.hint, 
           };
         }
 
