@@ -16,6 +16,7 @@ import TeamDashboard from '../features/teams/Dashboard'
 import QRScanPage from '../features/teams/QRScanPage'
 import MCQPage from '../features/teams/MCQPage'
 import PuzzlePage from '../features/teams/PuzzleView'
+import QRScannerTestPage from '../pages/QRScannerTestPage'
 
 const router = createBrowserRouter([
   {
@@ -25,6 +26,10 @@ const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/qr-test',
+    element: <QRScannerTestPage />,
   },
   {
     path: '/team',
