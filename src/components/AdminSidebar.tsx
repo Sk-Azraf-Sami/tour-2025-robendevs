@@ -10,7 +10,8 @@ import {
   MonitorOutlined,
   PlayCircleOutlined,
   TrophyOutlined,
-  LogoutOutlined
+  LogoutOutlined,
+  BugOutlined
 } from '@ant-design/icons'
 
 const { Sider } = Layout
@@ -58,6 +59,12 @@ const menuItems = [
     icon: <PlayCircleOutlined />,
     label: 'Launch Game',
     path: '/admin/launch'
+  },
+  {
+    key: '/admin/debug',
+    icon: <BugOutlined />,
+    label: 'Debug Tools',
+    path: '/admin/debug'
   }
 ]
 

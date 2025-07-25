@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Button, Input, Select, Card, Table, message, Tabs, Space, Typography, Collapse, Tag, Row, Col, Statistic } from 'antd';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Button, Input, Select, Card, Table, message, Tabs, Space, Typography, Collapse, Tag, Row, Col, Statistic, Alert, Switch, Badge } from 'antd';
+import { Html5QrcodeScanner } from "html5-qrcode";
 import { GameService } from '../services/GameService';
 import { FirestoreService } from '../services/FireStoreService';
 import type { Team, Puzzle, MCQ, TeamLeg } from '../types';
@@ -17,6 +18,13 @@ interface DebugLog {
   success: boolean;
 }
 
+interface QRScannerLog {
+  timestamp: string;
+  event: string;
+  details: unknown;
+  success: boolean;
+}
+
 export default function AuthDebugger() {
   // State variables
   const [teams, setTeams] = useState<Team[]>([]);
@@ -29,6 +37,19 @@ export default function AuthDebugger() {
   const [loading, setLoading] = useState<boolean>(false);
   const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
 
+  // QR Scanner testing state
+  const [qrScannerLogs, setQRScannerLogs] = useState<QRScannerLog[]>([]);
+  const [cameraPermission, setCameraPermission] = useState<string>('unknown');
+  const [scannerActive, setScannerActive] = useState<boolean>(false);
+  const [scannedCode, setScannedCode] = useState<string>('');
+  const [manualCode, setManualCode] = useState<string>('');
+  const [extractedCode, setExtractedCode] = useState<string>('');
+  const [scannerInitialized, setScannerInitialized] = useState<boolean>(false);
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scannerElementRef = useRef<HTMLDivElement>(null);
+  const isComponentMountedRef = useRef<boolean>(true);
+
   const addDebugLog = useCallback((action: string, data: unknown, success: boolean) => {
     const log: DebugLog = {
       timestamp: new Date().toLocaleTimeString(),
@@ -37,6 +58,17 @@ export default function AuthDebugger() {
       success
     };
     setDebugLogs(prev => [log, ...prev.slice(0, 49)]); // Keep only last 50 logs
+  }, []);
+
+  const addQRScannerLog = useCallback((event: string, details: unknown, success: boolean) => {
+    const log: QRScannerLog = {
+      timestamp: new Date().toLocaleTimeString(),
+      event,
+      details,
+      success
+    };
+    setQRScannerLogs(prev => [log, ...prev.slice(0, 49)]); // Keep only last 50 logs
+    console.log(`[QR Scanner Debug] ${event}:`, details);
   }, []);
 
   const loadInitialData = useCallback(async () => {
@@ -86,6 +118,37 @@ export default function AuthDebugger() {
       loadTeamDetails(selectedTeamId);
     }
   }, [selectedTeamId, loadTeamDetails]);
+
+  // Cleanup QR scanner on unmount
+  useEffect(() => {
+    isComponentMountedRef.current = true;
+    
+    return () => {
+      isComponentMountedRef.current = false;
+      
+      // Clear any pending timeouts
+      if (cleanupTimeoutRef.current) {
+        clearTimeout(cleanupTimeoutRef.current);
+        cleanupTimeoutRef.current = null;
+      }
+      
+      // Properly cleanup scanner
+      if (scannerRef.current) {
+        try {
+          // Use proper async cleanup
+          scannerRef.current.clear().then(() => {
+            scannerRef.current = null;
+          }).catch((error: unknown) => {
+            console.error("Failed to clear QR scanner:", error);
+            scannerRef.current = null;
+          });
+        } catch (error) {
+          console.error("Scanner cleanup error:", error);
+          scannerRef.current = null;
+        }
+      }
+    };
+  }, []);
 
   // Debug Functions
   const debugValidateQR = async () => {
@@ -179,6 +242,637 @@ export default function AuthDebugger() {
       message.error('Failed to get team progress');
     }
     setLoading(false);
+  };
+
+  // QR Scanner Testing Functions
+  const checkCameraPermissions = async () => {
+    addQRScannerLog('Permission Check Started', { userAgent: navigator.userAgent }, true);
+    
+    try {
+      // Check if navigator.mediaDevices is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        const error = "Camera not supported on this device";
+        setCameraPermission('not-supported');
+        addQRScannerLog('Permission Check Failed', { error }, false);
+        return;
+      }
+
+      // Get available camera devices
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        addQRScannerLog('Camera Devices Enumerated', { 
+          totalDevices: devices.length,
+          videoDevices: videoDevices.length,
+          deviceLabels: videoDevices.map(d => d.label || 'Unlabeled Device'),
+          deviceIds: videoDevices.map(d => d.deviceId.slice(0, 10) + '...')
+        }, true);
+      } catch (deviceError) {
+        addQRScannerLog('Device Enumeration Failed', { error: deviceError }, false);
+      }
+
+      // Check current permission state
+      if ('permissions' in navigator) {
+        try {
+          const permission = await navigator.permissions.query({ name: 'camera' as PermissionName });
+          setCameraPermission(permission.state);
+          addQRScannerLog('Permission State Checked', { state: permission.state }, true);
+          
+          // Listen for permission changes
+          permission.onchange = () => {
+            setCameraPermission(permission.state);
+            addQRScannerLog('Permission State Changed', { newState: permission.state }, true);
+          };
+        } catch (error) {
+          addQRScannerLog('Permission Query Failed', { error }, false);
+        }
+      }
+
+      // Try to request camera access
+      try {
+        const constraints = {
+          video: {
+            facingMode: 'environment', // Try back camera first
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        };
+        
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        setCameraPermission('granted');
+        
+        const videoTrack = stream.getVideoTracks()[0];
+        const settings = videoTrack.getSettings();
+        
+        addQRScannerLog('Camera Access Granted', { 
+          streamActive: stream.active,
+          tracks: stream.getVideoTracks().length,
+          cameraSettings: {
+            deviceId: settings.deviceId?.slice(0, 10) + '...',
+            facingMode: settings.facingMode,
+            width: settings.width,
+            height: settings.height,
+            frameRate: settings.frameRate
+          }
+        }, true);
+        
+        // Stop the stream immediately as we just wanted to test permission
+        stream.getTracks().forEach(track => track.stop());
+        addQRScannerLog('Test Stream Stopped', {}, true);
+      } catch (error) {
+        setCameraPermission('denied');
+        addQRScannerLog('Camera Access Denied', { 
+          error: error instanceof Error ? {
+            name: error.name,
+            message: error.message,
+            constraint: (error as { constraint?: string }).constraint
+          } : error
+        }, false);
+      }
+    } catch (error) {
+      setCameraPermission('error');
+      addQRScannerLog('Permission Check Error', { error }, false);
+    }
+  };
+
+  // Debug function to validate extracted code (mimics team flow)
+  const debugValidateExtractedCode = async (extractedCode: string) => {
+    if (!selectedTeamId) {
+      addQRScannerLog('Validation Skipped - No Team Selected', { 
+        extractedCode: extractedCode 
+      }, false);
+      return;
+    }
+
+    addQRScannerLog('Starting Code Validation', { 
+      teamId: selectedTeamId,
+      code: extractedCode,
+      codeLength: extractedCode.length
+    }, true);
+
+    try {
+      const result = await GameService.validateQRCode(selectedTeamId, extractedCode);
+      addQRScannerLog('QR Code Validation Result', { 
+        teamId: selectedTeamId,
+        code: extractedCode,
+        result: result,
+        success: result.success,
+        message: result.message
+      }, result.success);
+
+      if (result.success) {
+        addQRScannerLog('QR Validation Success - Team Flow Complete', { 
+          nextStep: 'MCQ Answer Required',
+          teamProgress: 'Updated'
+        }, true);
+        
+        // Reload team details to see updated legs
+        await loadTeamDetails(selectedTeamId);
+      } else {
+        addQRScannerLog('QR Validation Failed', { 
+          reason: result.message,
+          suggestion: 'Check if team is at correct checkpoint'
+        }, false);
+      }
+    } catch (error) {
+      addQRScannerLog('QR Validation Error', { 
+        teamId: selectedTeamId,
+        code: extractedCode,
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message
+        } : error
+      }, false);
+    }
+  };
+
+  const initializeScanner = () => {
+    if (scannerRef.current) {
+      addQRScannerLog('Scanner Already Initialized', { 
+        scannerExists: !!scannerRef.current
+      }, false);
+      return;
+    }
+
+    if (!isComponentMountedRef.current) {
+      addQRScannerLog('Component Unmounted - Skipping Initialization', {}, false);
+      return;
+    }
+
+    addQRScannerLog('Starting Scanner Initialization', {
+      timestamp: Date.now(),
+      userAgent: navigator.userAgent,
+      windowSize: { width: window.innerWidth, height: window.innerHeight }
+    }, true);
+
+    // Use a unique ID for this scanner instance to avoid conflicts
+    const scannerId = `qr-scanner-debug-${Date.now()}`;
+    
+    // Add a small delay to ensure DOM is ready
+    const timeout = setTimeout(() => {
+      if (!isComponentMountedRef.current) {
+        addQRScannerLog('Component Unmounted During Init - Aborting', {}, false);
+        return;
+      }
+
+      // Get the scanner container element
+      const containerElement = scannerElementRef.current;
+      if (!containerElement) {
+        addQRScannerLog('Scanner Container Not Found', { 
+          refExists: !!scannerElementRef.current
+        }, false);
+        return;
+      }
+
+      addQRScannerLog('Scanner Container Found', { 
+        elementExists: true,
+        elementChildren: containerElement.children.length
+      }, true);
+
+      // Clear container and create a new div for the scanner
+      try {
+        containerElement.innerHTML = '';
+        const scannerDiv = document.createElement('div');
+        scannerDiv.id = scannerId;
+        scannerDiv.style.width = '100%';
+        scannerDiv.style.minHeight = '300px';
+        containerElement.appendChild(scannerDiv);
+        
+        addQRScannerLog('Scanner Element Created', { 
+          scannerId: scannerId,
+          elementCreated: true
+        }, true);
+      } catch (error) {
+        addQRScannerLog('Failed to Create Scanner Element', { error }, false);
+        return;
+      }
+
+      try {
+        // Mirror the actual QRScanner configuration
+        const screenWidth = window.innerWidth;
+        const qrBoxSize = screenWidth <= 480 ? 180 : screenWidth <= 768 ? 200 : 220;
+        
+        const config = {
+          fps: 10,
+          qrbox: { width: qrBoxSize, height: qrBoxSize },
+          aspectRatio: 1.0,
+          disableFlip: false,
+          rememberLastUsedCamera: true,
+          showTorchButtonIfSupported: true,
+          showZoomSliderIfSupported: true,
+          defaultZoomValueIfSupported: 2,
+        };
+
+        addQRScannerLog('Creating Scanner Instance', { 
+          scannerId: scannerId,
+          config: config,
+          screenWidth: screenWidth,
+          qrBoxSize: qrBoxSize
+        }, true);
+
+        const scanner = new Html5QrcodeScanner(
+          scannerId,
+          config,
+          false // verbose logging disabled for cleaner output
+        );
+
+        addQRScannerLog('Scanner Instance Created', { 
+          scannerType: 'Html5QrcodeScanner',
+          hasScanner: !!scanner
+        }, true);
+
+        // Define success callback (mimics team flow)
+        const onScanSuccess = (decodedText: string, decodedResult: unknown) => {
+          if (!isComponentMountedRef.current) {
+            addQRScannerLog('Scan Success but Component Unmounted', { text: decodedText }, false);
+            return;
+          }
+
+          addQRScannerLog('QR Code Scan Success', { 
+            rawText: decodedText,
+            textLength: decodedText.length,
+            decodedResult: {
+              format: (decodedResult as { result?: { format?: string } })?.result?.format,
+              timestamp: Date.now()
+            }
+          }, true);
+          
+          setScannedCode(decodedText);
+          
+          // Extract valid code using regex (mimic actual flow)
+          const extracted = extractValidCode(decodedText);
+          setExtractedCode(extracted);
+          
+          addQRScannerLog('Code Extraction Complete', { 
+            original: decodedText,
+            extracted: extracted,
+            wasExtracted: extracted !== decodedText,
+            extractionSuccess: extracted.length > 0
+          }, true);
+
+          // Auto-fill manual code field (mimic actual flow)
+          setManualCode(extracted);
+          addQRScannerLog('Manual Field Auto-filled', { 
+            code: extracted,
+            fieldUpdated: true
+          }, true);
+
+          // Simulate the team flow - validate the extracted code
+          debugValidateExtractedCode(extracted);
+        };
+
+        // Define error callback
+        const onScanFailure = (error: string) => {
+          // Don't log every scan attempt failure as it's normal
+          if (!error.includes('NotFoundException') && 
+              !error.includes('No MultiFormat Readers') &&
+              !error.includes('QR code parse error')) {
+            addQRScannerLog('Scan Error', { 
+              error: error,
+              errorType: error.includes('Permission') ? 'PERMISSION' : 
+                        error.includes('NotFound') ? 'NOT_FOUND' : 
+                        error.includes('NotAllowed') ? 'NOT_ALLOWED' : 'OTHER'
+            }, false);
+          }
+        };
+
+        addQRScannerLog('Rendering Scanner UI', { 
+          hasSuccessCallback: !!onScanSuccess,
+          hasErrorCallback: !!onScanFailure
+        }, true);
+
+        // Render the scanner
+        scanner.render(onScanSuccess, onScanFailure);
+        
+        // Set the scanner reference and state
+        scannerRef.current = scanner;
+        setScannerInitialized(true);
+        setScannerActive(true);
+        
+        addQRScannerLog('Scanner Rendered Successfully', { 
+          scannerState: 'ACTIVE',
+          scannerId: scannerId
+        }, true);
+
+      } catch (error) {
+        addQRScannerLog('Scanner Initialization Failed', { 
+          error: error instanceof Error ? {
+            name: error.name,
+            message: error.message,
+            stack: error.stack?.slice(0, 500)
+          } : error,
+          timestamp: Date.now()
+        }, false);
+        setScannerInitialized(false);
+        setScannerActive(false);
+      }
+    }, 100); // 100ms delay to ensure DOM is ready
+
+    cleanupTimeoutRef.current = timeout;
+  };
+
+  const stopScanner = async () => {
+    if (!scannerRef.current) {
+      addQRScannerLog('No Scanner to Stop', {}, false);
+      return;
+    }
+
+    addQRScannerLog('Stopping Scanner', { hasScanner: !!scannerRef.current }, true);
+
+    try {
+      // Clear the scanner
+      await scannerRef.current.clear();
+      addQRScannerLog('Scanner Cleared Successfully', {}, true);
+    } catch (error) {
+      addQRScannerLog('Scanner Clear Error', { 
+        error: error instanceof Error ? error.message : error 
+      }, false);
+    }
+
+    // Clean up the scanner element safely
+    try {
+      if (scannerElementRef.current) {
+        // Clear the container content safely
+        scannerElementRef.current.innerHTML = '';
+        addQRScannerLog('Scanner Container Cleared', { 
+          containerFound: true 
+        }, true);
+      } else {
+        addQRScannerLog('Scanner Container Not Found for Cleanup', {}, false);
+      }
+    } catch (error) {
+      addQRScannerLog('Container Cleanup Error', { 
+        error: error instanceof Error ? error.message : error 
+      }, false);
+    }
+
+    // Reset state
+    scannerRef.current = null;
+    setScannerActive(false);
+    setScannerInitialized(false);
+    addQRScannerLog('Scanner State Reset', { 
+      scannerActive: false,
+      scannerInitialized: false
+    }, true);
+  };
+
+  const extractValidCode = (scannedText: string): string => {
+    addQRScannerLog('Starting Code Extraction', { 
+      input: scannedText,
+      inputLength: scannedText.length,
+      inputType: typeof scannedText
+    }, true);
+    
+    // Remove any whitespace and convert to uppercase
+    const cleanText = scannedText.trim().toUpperCase();
+    addQRScannerLog('Text Cleaned', { 
+      original: scannedText, 
+      cleaned: cleanText,
+      trimmed: scannedText.length !== cleanText.length
+    }, true);
+    
+    // Pattern matching with priority order
+    const patterns = [
+      {
+        name: 'PUZZLE_XXXXXX',
+        regex: /PUZZLE_\d{6}/,
+        description: 'Standard puzzle format with 6 digits'
+      },
+      {
+        name: 'CHECKPOINT_XXX',
+        regex: /CHECKPOINT_[A-Z0-9_]+/,
+        description: 'Checkpoint format with alphanumeric code'
+      },
+      {
+        name: 'CP_XXX',
+        regex: /CP_[A-Z0-9_]+/,
+        description: 'Short checkpoint format'
+      },
+      {
+        name: 'QR-HUNT-PATTERN',
+        regex: /QR-HUNT-\d{4}-([A-Z0-9_]+)-/,
+        description: 'QR Hunt specific pattern with embedded code',
+        extractGroup: 1
+      },
+      {
+        name: 'URL_WITH_CODE',
+        regex: /https?:\/\/[^\s]+\/([A-Z0-9_]+)$/i,
+        description: 'URL ending with code',
+        extractGroup: 1
+      },
+      {
+        name: 'GENERIC_CODE',
+        regex: /([A-Z0-9_]{3,})/,
+        description: 'Generic alphanumeric code (3+ chars)',
+        extractGroup: 1
+      }
+    ];
+
+    for (const pattern of patterns) {
+      const match = cleanText.match(pattern.regex);
+      if (match) {
+        const extractedCode = pattern.extractGroup ? match[pattern.extractGroup] : match[0];
+        addQRScannerLog(`Pattern Matched: ${pattern.name}`, { 
+          pattern: pattern.description,
+          regex: pattern.regex.toString(),
+          fullMatch: match[0],
+          extractedCode: extractedCode,
+          extractGroup: pattern.extractGroup || 0
+        }, true);
+        return extractedCode.toUpperCase();
+      }
+    }
+
+    addQRScannerLog('No Pattern Matched', { 
+      text: cleanText,
+      patternsChecked: patterns.length,
+      returning: cleanText
+    }, false);
+    
+    return cleanText;
+  };
+
+  const testManualCodeExtraction = () => {
+    if (!manualCode) {
+      addQRScannerLog('Manual Test Failed', { error: 'No code entered' }, false);
+      return;
+    }
+
+    const extracted = extractValidCode(manualCode);
+    setExtractedCode(extracted);
+    addQRScannerLog('Manual Code Tested', { 
+      input: manualCode,
+      output: extracted,
+      changed: extracted !== manualCode
+    }, true);
+  };
+
+  const clearQRScannerLogs = () => {
+    setQRScannerLogs([]);
+    addQRScannerLog('Logs Cleared', {}, true);
+  };
+
+  // New function to simulate complete team flow
+  const simulateTeamQRFlow = async () => {
+    if (!selectedTeamId) {
+      addQRScannerLog('Team Flow Simulation Failed', { 
+        error: 'No team selected' 
+      }, false);
+      message.error('Please select a team first');
+      return;
+    }
+
+    addQRScannerLog('🎯 Starting Team QR Flow Simulation', { 
+      teamId: selectedTeamId,
+      timestamp: Date.now()
+    }, true);
+
+    try {
+      // Step 1: Get team details
+      const team = await FirestoreService.getTeam(selectedTeamId);
+      if (!team) {
+        addQRScannerLog('Step 1: Team Not Found', { 
+          teamId: selectedTeamId
+        }, false);
+        return;
+      }
+      
+      addQRScannerLog('Step 1: Team Data Retrieved', { 
+        teamId: team.id,
+        currentIndex: team.currentIndex,
+        isActive: team.isActive,
+        roadmapLength: team.roadmap.length
+      }, true);
+
+      // Step 2: Check if team has next checkpoint
+      if (team.currentIndex >= team.roadmap.length) {
+        addQRScannerLog('Team Flow Complete', { 
+          message: 'Team has completed all checkpoints'
+        }, true);
+        return;
+      }
+
+      const currentCheckpointId = team.roadmap[team.currentIndex];
+      addQRScannerLog('Step 2: Current Checkpoint Identified', { 
+        checkpointId: currentCheckpointId,
+        index: team.currentIndex
+      }, true);
+
+      // Step 3: Get puzzle details for current checkpoint
+      const puzzle = await FirestoreService.getPuzzle(currentCheckpointId);
+      if (!puzzle) {
+        addQRScannerLog('Step 3: Puzzle Not Found', { 
+          checkpointId: currentCheckpointId
+        }, false);
+        return;
+      }
+
+      addQRScannerLog('Step 3: Puzzle Retrieved', { 
+        puzzleId: puzzle.id,
+        checkpoint: puzzle.checkpoint,
+        code: puzzle.code,
+        isStarting: puzzle.isStarting
+      }, true);
+
+      // Step 4: Simulate QR code scan with the correct code
+      const simulatedQRText = `QR-HUNT-2025-${puzzle.code}-CHECKPOINT`;
+      addQRScannerLog('Step 4: QR Code Scanned (Simulated)', { 
+        rawQRText: simulatedQRText,
+        expectedCode: puzzle.code
+      }, true);
+
+      // Step 5: Extract code (same as real flow)
+      const extractedCode = extractValidCode(simulatedQRText);
+      addQRScannerLog('Step 5: Code Extraction', { 
+        originalText: simulatedQRText,
+        extractedCode: extractedCode,
+        matches: extractedCode === puzzle.code
+      }, extractedCode === puzzle.code);
+
+      // Step 6: Validate QR code (actual API call)
+      addQRScannerLog('Step 6: Starting QR Validation', { 
+        teamId: selectedTeamId,
+        code: extractedCode
+      }, true);
+
+      const validationResult = await GameService.validateQRCode(selectedTeamId, extractedCode);
+      addQRScannerLog('Step 6: QR Validation Result', { 
+        success: validationResult.success,
+        message: validationResult.message,
+        result: validationResult
+      }, validationResult.success);
+
+      if (validationResult.success) {
+        addQRScannerLog('✅ Team QR Flow Successful', { 
+          nextStep: 'Team should proceed to MCQ',
+          checkpointCompleted: currentCheckpointId
+        }, true);
+        
+        // Reload team to see updated state
+        await loadTeamDetails(selectedTeamId);
+        message.success('QR Flow simulation completed successfully!');
+      } else {
+        addQRScannerLog('❌ Team QR Flow Failed', { 
+          reason: validationResult.message
+        }, false);
+        message.error(`QR Flow failed: ${validationResult.message}`);
+      }
+
+    } catch (error) {
+      addQRScannerLog('Team QR Flow Error', { 
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message
+        } : error
+      }, false);
+      message.error('Error during team flow simulation');
+    }
+  };
+
+  // Enhanced test for different QR patterns
+  const testQRPatterns = () => {
+    const testPatterns = [
+      { input: 'PUZZLE_123456', expected: 'PUZZLE_123456' },
+      { input: 'CHECKPOINT_A1', expected: 'CHECKPOINT_A1' },
+      { input: 'CP_001', expected: 'CP_001' },
+      { input: 'https://treasure-hunt.com/PUZZLE_789012', expected: 'PUZZLE_789012' },
+      { input: 'QR-HUNT-2025-CP_002-CHECKPOINT', expected: 'CP_002' },
+      { input: 'Random text with CP_003 embedded', expected: 'CP_003' },
+      { input: '   CHECKPOINT_B5   ', expected: 'CHECKPOINT_B5' }, // with whitespace
+      { input: 'checkpoint_c7', expected: 'CHECKPOINT_C7' }, // lowercase
+      { input: 'Some random text', expected: 'SOME' }, // fallback to first word
+      { input: 'INVALID', expected: 'INVALID' },
+      { input: '', expected: '' }, // empty string test
+    ];
+
+    addQRScannerLog('🧪 Starting QR Pattern Tests', { 
+      totalPatterns: testPatterns.length 
+    }, true);
+
+    let passedTests = 0;
+    let failedTests = 0;
+
+    testPatterns.forEach((test, index) => {
+      const extracted = extractValidCode(test.input);
+      const passed = extracted === test.expected;
+      
+      if (passed) passedTests++;
+      else failedTests++;
+      
+      addQRScannerLog(`Test ${index + 1}: ${passed ? '✅ PASS' : '❌ FAIL'}`, { 
+        input: test.input,
+        expected: test.expected,
+        actual: extracted,
+        passed: passed
+      }, passed);
+    });
+
+    addQRScannerLog('QR Pattern Tests Complete', {
+      totalTests: testPatterns.length,
+      passed: passedTests,
+      failed: failedTests,
+      successRate: `${((passedTests / testPatterns.length) * 100).toFixed(1)}%`
+    }, failedTests === 0);
   };
 
   // Helper functions for rendering
@@ -306,7 +1000,12 @@ export default function AuthDebugger() {
         Comprehensive debugging tool for testing game flow, checkpoint tracking, and leg data.
       </Paragraph>
 
-      <Tabs defaultActiveKey="1">
+      <Tabs defaultActiveKey="1" onChange={(activeKey) => {
+        // Stop scanner when switching away from QR scanner tab
+        if (activeKey !== "5" && scannerRef.current) {
+          stopScanner();
+        }
+      }}>
         <TabPane tab="Game Testing" key="1">
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             {/* Control Panel */}
@@ -586,6 +1285,330 @@ export default function AuthDebugger() {
                   </div>
                 </Card>
               ))}
+            </Card>
+          </Space>
+        </TabPane>
+
+        <TabPane tab="📱 QR Scanner Testing" key="5">
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            {/* Camera Permission Testing */}
+            <Card title="📹 Camera Permission Testing" size="small">
+              <Row gutter={16} align="middle">
+                <Col span={8}>
+                  <Space direction="vertical">
+                    <Text strong>Permission Status:</Text>
+                    <Badge 
+                      status={
+                        cameraPermission === 'granted' ? 'success' :
+                        cameraPermission === 'denied' ? 'error' :
+                        cameraPermission === 'not-supported' ? 'warning' : 'default'
+                      }
+                      text={cameraPermission.toUpperCase()}
+                    />
+                  </Space>
+                </Col>
+                <Col span={8}>
+                  <Button 
+                    type="primary" 
+                    onClick={checkCameraPermissions}
+                    loading={loading}
+                  >
+                    Check Camera Permissions
+                  </Button>
+                </Col>
+                <Col span={8}>
+                  <Alert
+                    message="Camera Info"
+                    description={`User Agent: ${navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'} | 
+                                 MediaDevices: ${navigator.mediaDevices ? 'Supported' : 'Not Supported'}`}
+                    type="info"
+                    showIcon
+                  />
+                </Col>
+              </Row>
+            </Card>
+
+            {/* Scanner Controls */}
+            <Card title="🔧 Scanner Controls" size="small">
+              <Row gutter={16} align="middle">
+                <Col span={6}>
+                  <Space direction="vertical">
+                    <Text strong>Scanner Status:</Text>
+                    <Badge 
+                      status={scannerActive ? 'processing' : scannerInitialized ? 'success' : 'default'}
+                      text={scannerActive ? 'ACTIVE' : scannerInitialized ? 'INITIALIZED' : 'NOT INITIALIZED'}
+                    />
+                  </Space>
+                </Col>
+                <Col span={6}>
+                  <Button 
+                    type="primary" 
+                    onClick={initializeScanner}
+                    disabled={scannerInitialized}
+                  >
+                    Initialize Scanner
+                  </Button>
+                </Col>
+                <Col span={6}>
+                  <Button 
+                    danger 
+                    onClick={stopScanner}
+                    disabled={!scannerInitialized}
+                  >
+                    Stop Scanner
+                  </Button>
+                </Col>
+                <Col span={6}>
+                  <Switch 
+                    checked={scannerActive} 
+                    disabled={!scannerInitialized}
+                    checkedChildren="ON"
+                    unCheckedChildren="OFF"
+                  />
+                </Col>
+              </Row>
+            </Card>
+
+            {/* Team Flow Simulation */}
+            <Card title="🎯 Team Flow Simulation" size="small">
+              <Row gutter={16} align="middle">
+                <Col span={8}>
+                  <Space direction="vertical">
+                    <Text strong>Selected Team:</Text>
+                    <Text type="secondary">{selectedTeamId || 'No team selected'}</Text>
+                  </Space>
+                </Col>
+                <Col span={8}>
+                  <Button 
+                    type="primary" 
+                    onClick={simulateTeamQRFlow}
+                    disabled={!selectedTeamId}
+                    loading={loading}
+                  >
+                    Simulate Full QR Flow
+                  </Button>
+                </Col>
+                <Col span={8}>
+                  <Button 
+                    onClick={testQRPatterns}
+                  >
+                    Test QR Patterns
+                  </Button>
+                </Col>
+              </Row>
+              <Row style={{ marginTop: '8px' }}>
+                <Col span={24}>
+                  <Alert
+                    message="Team Flow Simulation"
+                    description="This simulates the complete team QR scanning workflow: team lookup → checkpoint identification → QR scan → code extraction → validation → MCQ readiness"
+                    type="info"
+                    showIcon
+                  />
+                </Col>
+              </Row>
+            </Card>
+
+            {/* QR Scanner Element */}
+            <Card title="📷 Live QR Scanner" size="small">
+              <div 
+                ref={scannerElementRef}
+                style={{ 
+                  minHeight: '300px', 
+                  border: '2px dashed #d9d9d9', 
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#fafafa'
+                }}
+              >
+                {!scannerInitialized && (
+                  <Text type="secondary">Click "Initialize Scanner" to start camera</Text>
+                )}
+              </div>
+            </Card>
+
+            {/* Code Extraction Testing */}
+            <Card title="🔍 Code Extraction Testing" size="small">
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Text strong>Manual Code Testing:</Text>
+                    <Input.TextArea
+                      placeholder="Enter raw QR code text to test extraction..."
+                      value={manualCode}
+                      onChange={(e) => setManualCode(e.target.value)}
+                      rows={3}
+                    />
+                    <Button onClick={testManualCodeExtraction} type="dashed">
+                      Test Code Extraction
+                    </Button>
+                  </Space>
+                </Col>
+                <Col span={12}>
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Text strong>Extraction Results:</Text>
+                    <Alert
+                      message="Last Scanned Code"
+                      description={scannedCode || 'No code scanned yet'}
+                      type="info"
+                      showIcon
+                    />
+                    <Alert
+                      message="Extracted Code"
+                      description={extractedCode || 'No code extracted yet'}
+                      type={extractedCode ? 'success' : 'warning'}
+                      showIcon
+                    />
+                  </Space>
+                </Col>
+              </Row>
+            </Card>
+
+            {/* QR Scanner Logs */}
+            <Card title="📝 QR Scanner Debug Logs" size="small">
+              <Row gutter={16} style={{ marginBottom: '16px' }}>
+                <Col span={12}>
+                  <Text strong>Real-time Scanner Events (Last 50)</Text>
+                </Col>
+                <Col span={12} style={{ textAlign: 'right' }}>
+                  <Button onClick={clearQRScannerLogs} size="small">
+                    Clear Logs
+                  </Button>
+                </Col>
+              </Row>
+              
+              <Table
+                dataSource={qrScannerLogs.map((log, index) => ({ ...log, key: index }))}
+                columns={[
+                  {
+                    title: 'Time',
+                    dataIndex: 'timestamp',
+                    key: 'timestamp',
+                    width: 100,
+                  },
+                  {
+                    title: 'Event',
+                    dataIndex: 'event',
+                    key: 'event',
+                    width: 200,
+                  },
+                  {
+                    title: 'Status',
+                    key: 'success',
+                    width: 80,
+                    render: (_: unknown, log: QRScannerLog) => (
+                      <Tag color={log.success ? 'green' : 'red'}>
+                        {log.success ? 'SUCCESS' : 'ERROR'}
+                      </Tag>
+                    ),
+                  },
+                  {
+                    title: 'Details',
+                    key: 'details',
+                    render: (_: unknown, log: QRScannerLog) => (
+                      <pre style={{ fontSize: '11px', maxWidth: '400px', overflow: 'auto' }}>
+                        {JSON.stringify(log.details, null, 2)}
+                      </pre>
+                    ),
+                  },
+                ]}
+                pagination={{ pageSize: 10 }}
+                size="small"
+                scroll={{ x: true }}
+              />
+            </Card>
+
+            {/* QR Scanner Workflow Information */}
+            <Card title="📋 QR Scanner Workflow Information" size="small">
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Text strong>Complete Team QR Scanning Workflow:</Text>
+                  <ol style={{ marginTop: '8px', paddingLeft: '20px' }}>
+                    <li><Text>Team opens QR scanner page</Text></li>
+                    <li><Text>Camera permission is requested automatically</Text></li>
+                    <li><Text>Scanner initializes with device camera</Text></li>
+                    <li><Text>Team scans QR code at checkpoint</Text></li>
+                    <li><Text>Raw QR text is captured</Text></li>
+                    <li><Text>Code extraction using regex patterns</Text></li>
+                    <li><Text>Extracted code is validated against team's current checkpoint</Text></li>
+                    <li><Text>If valid, team progress is updated and MCQ is unlocked</Text></li>
+                  </ol>
+                </Col>
+                <Col span={12}>
+                  <Text strong>Debug Information Logged:</Text>
+                  <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
+                    <li><Text>Camera permission state and device info</Text></li>
+                    <li><Text>Scanner initialization success/failure</Text></li>
+                    <li><Text>Raw QR code text captured</Text></li>
+                    <li><Text>Pattern matching and code extraction</Text></li>
+                    <li><Text>Validation requests and responses</Text></li>
+                    <li><Text>Team progress updates</Text></li>
+                    <li><Text>Error messages and troubleshooting info</Text></li>
+                  </ul>
+                </Col>
+              </Row>
+              <Row style={{ marginTop: '16px' }}>
+                <Col span={24}>
+                  <Alert
+                    message="Debugging Tips"
+                    description={
+                      <ul style={{ marginBottom: 0 }}>
+                        <li>Use 'Simulate Full QR Flow' to test the complete workflow with a selected team</li>
+                        <li>Test different QR patterns using the manual code extraction</li>
+                        <li>Check camera permissions if scanning doesn't work</li>
+                        <li>Monitor the debug logs for detailed error information</li>
+                        <li>Ensure the team is at the correct checkpoint for QR validation</li>
+                      </ul>
+                    }
+                    type="info"
+                    showIcon
+                  />
+                </Col>
+              </Row>
+            </Card>
+
+            {/* Test Patterns */}
+            <Card title="🧪 Test Pattern Reference" size="small">
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Text strong>Supported Patterns:</Text>
+                  <ul style={{ marginTop: '8px' }}>
+                    <li><Text code>PUZZLE_123456</Text> - Puzzle format</li>
+                    <li><Text code>CHECKPOINT_A1</Text> - Checkpoint format</li>
+                    <li><Text code>CP_001</Text> - Generic format</li>
+                    <li><Text code>https://example.com/CODE123</Text> - URL format</li>
+                  </ul>
+                </Col>
+                <Col span={8}>
+                  <Text strong>Quick Test Codes:</Text>
+                  <Space direction="vertical" style={{ marginTop: '8px' }}>
+                    <Button size="small" onClick={() => setManualCode('PUZZLE_123456')}>
+                      Test Puzzle Pattern
+                    </Button>
+                    <Button size="small" onClick={() => setManualCode('CHECKPOINT_A1')}>
+                      Test Checkpoint Pattern
+                    </Button>
+                    <Button size="small" onClick={() => setManualCode('https://treasure-hunt.com/CP_001')}>
+                      Test URL Pattern
+                    </Button>
+                  </Space>
+                </Col>
+                <Col span={8}>
+                  <Text strong>Available Puzzle Codes:</Text>
+                  <Space direction="vertical" style={{ marginTop: '8px' }}>
+                    {puzzles.slice(0, 3).map(puzzle => (
+                      <Button 
+                        key={puzzle.id}
+                        size="small" 
+                        onClick={() => setManualCode(puzzle.code)}
+                      >
+                        {puzzle.code}
+                      </Button>
+                    ))}
+                  </Space>
+                </Col>
+              </Row>
             </Card>
           </Space>
         </TabPane>

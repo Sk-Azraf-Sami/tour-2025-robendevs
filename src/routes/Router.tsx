@@ -16,6 +16,8 @@ import TeamDashboard from '../features/teams/Dashboard'
 import QRScanPage from '../features/teams/QRScanPage'
 import MCQPage from '../features/teams/MCQPage'
 import PuzzlePage from '../features/teams/PuzzleView'
+// Debug components
+import AuthDebugger from '../components/AuthDebugger'
 
 const router = createBrowserRouter([
   {
@@ -92,6 +94,10 @@ const router = createBrowserRouter([
       {
         path: 'launch',
         element: <Launch />,
+      },
+      {
+        path: 'debug',
+        element: <AuthDebugger />,
       },
     ],
   },
