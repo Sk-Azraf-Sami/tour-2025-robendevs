@@ -18,11 +18,19 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   const [isValidating, setIsValidating] = useState(false)
   const [scannedRawCode, setScannedRawCode] = useState('')
   const [showScannedResult, setShowScannedResult] = useState(false)
+  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
   const scannerRef = useRef<Html5QrcodeScanner | null>(null)
+  const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Cleanup scanner on unmount
+  // Cleanup scanner on unmount and when switching methods
   useEffect(() => {
     return () => {
+      // Clear any pending timeouts
+      if (cleanupTimeoutRef.current) {
+        clearTimeout(cleanupTimeoutRef.current)
+      }
+      // Clean up scanner
       if (scannerRef.current) {
         scannerRef.current.clear().catch((error: unknown) => {
           console.error("Failed to clear scanner:", error)
@@ -30,6 +38,58 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
       }
     }
   }, [])
+
+  // Check camera permissions
+  useEffect(() => {
+    const checkCameraPermissions = async () => {
+      try {
+        // Check if navigator.mediaDevices is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setError("Camera not supported on this device")
+          setPermissionGranted(false)
+          return
+        }
+
+        // Check current permission state
+        if (navigator.permissions) {
+          try {
+            const permission = await navigator.permissions.query({ name: 'camera' as PermissionName })
+            setPermissionGranted(permission.state === 'granted')
+            
+            // Listen for permission changes
+            permission.onchange = () => {
+              setPermissionGranted(permission.state === 'granted')
+            }
+          } catch (error) {
+            console.debug("Permission query not supported:", error)
+            // Fall back to trying to access camera directly
+          }
+        }
+      } catch (error) {
+        console.error("Error checking camera permissions:", error)
+      }
+    }
+
+    checkCameraPermissions()
+  }, [])
+
+  // Initialize scanner when switching to camera method
+  useEffect(() => {
+    if (scanMethod === 'camera' && !isScanning) {
+      // Small delay to ensure DOM is ready
+      const timeout = setTimeout(() => {
+        setIsInitialized(true)
+      }, 100)
+      
+      cleanupTimeoutRef.current = timeout
+      
+      return () => {
+        if (timeout) clearTimeout(timeout)
+      }
+    } else {
+      setIsInitialized(false)
+    }
+  }, [scanMethod, isScanning])
 
   // Function to extract valid code using regex
   const extractValidCode = (scannedText: string): string => {
@@ -53,13 +113,81 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
     return cleanText
   }
 
-  const startScan = () => {
-    if (!isScanning && document.getElementById("qr-reader")) {
+  const startScan = async () => {
+    // Clear any previous errors
+    setError('')
+    
+    // First check if we can access camera
+    try {
+      console.log("Requesting camera permission...")
+      // Request camera permission explicitly
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment' // Try to use back camera first
+        } 
+      })
+      
+      console.log("Camera permission granted!")
+      // Stop the test stream immediately
+      stream.getTracks().forEach(track => track.stop())
+      setPermissionGranted(true)
+      
+    } catch (permissionError) {
+      console.error("Camera permission denied:", permissionError)
+      
+      // Check for specific error types
+      if (permissionError instanceof DOMException) {
+        switch (permissionError.name) {
+          case 'NotAllowedError':
+            setError("Camera access denied. Please allow camera permission in your browser settings and try again.")
+            break
+          case 'NotFoundError':
+            setError("No camera found on this device.")
+            break
+          case 'NotSupportedError':
+            setError("Camera is not supported on this device.")
+            break
+          case 'NotReadableError':
+            setError("Camera is already in use by another application.")
+            break
+          default:
+            setError("Failed to access camera. Please check your browser settings and try again.")
+        }
+      } else {
+        setError("Camera permission denied. Please allow camera access and try again.")
+      }
+      
+      setPermissionGranted(false)
+      return
+    }
+
+    // Now start the actual QR scanner
+    if (!isScanning) {
+      const qrReaderElement = document.getElementById("qr-reader")
+      if (!qrReaderElement) {
+        console.error("QR reader element not found")
+        setError("QR reader element not found. Please try again.")
+        return
+      }
+
       try {
+        console.log("Starting QR scanner...")
+        
+        // Clear any existing scanner first
+        if (scannerRef.current) {
+          console.log("Clearing existing scanner...")
+          await scannerRef.current.clear()
+          scannerRef.current = null
+        }
+
+        // Small delay to ensure DOM cleanup is complete
+        await new Promise(resolve => setTimeout(resolve, 200))
+
         // Responsive QR box sizing based on screen width
         const screenWidth = window.innerWidth
         const qrBoxSize = screenWidth <= 480 ? 200 : screenWidth <= 768 ? 220 : 250
         
+        console.log("Creating new scanner instance...")
         scannerRef.current = new Html5QrcodeScanner(
           "qr-reader",
           { 
@@ -72,16 +200,23 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             showZoomSliderIfSupported: true,
             defaultZoomValueIfSupported: 2,
             // Mobile optimizations
-            supportedScanTypes: [0, 1] // QR Code and Data Matrix
+            supportedScanTypes: [0, 1], // QR Code and Data Matrix
+            // Camera constraints
+            videoConstraints: {
+              facingMode: "environment" // Prefer back camera
+            }
           },
           false
         )
         
+        console.log("Rendering scanner...")
         scannerRef.current.render(
           (decodedText: string) => {
+            console.log("QR Code successfully scanned:", decodedText)
+            
             // Extract valid code from scanned text
             const validCode = extractValidCode(decodedText)
-            console.log("QR Code scanned:", decodedText, "-> Extracted:", validCode)
+            console.log("Raw QR data:", decodedText, "-> Extracted code:", validCode)
             
             // Stop scanning
             stopScan()
@@ -94,30 +229,41 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             setError('')
           },
           (error: string) => {
-            // Only log errors, don't show them to user (too noisy)
-            console.debug("QR scan error:", error)
+            // Only log scanning errors, don't show them to user (too noisy)
+            // These are mostly just "no QR code found" messages
+            console.debug("QR scan error (this is normal):", error)
           }
         )
+        
         setIsScanning(true)
-        setError('')
+        console.log("QR scanner started successfully!")
+        
       } catch (err) {
         console.error("Failed to start QR scanner:", err)
-        setError("Failed to start camera. Please check camera permissions.")
+        setError("Failed to start camera. Please check camera permissions and try again.")
         setIsScanning(false)
+        setPermissionGranted(false)
       }
     }
   }
 
-  const stopScan = () => {
+  const stopScan = async () => {
+    console.log("Stopping QR scanner...")
+    
     if (scannerRef.current) {
-      scannerRef.current.clear().catch((error: unknown) => {
+      try {
+        await scannerRef.current.clear()
+        console.log("Scanner cleared successfully")
+      } catch (error: unknown) {
         console.error("Failed to clear scanner:", error)
-      })
-      scannerRef.current = null
+      } finally {
+        scannerRef.current = null
+      }
     }
+    
     setIsScanning(false)
+    console.log("QR scanner stopped")
   }
-
 
   const handleManualSubmit = async () => {
     if (!manualCode.trim()) {
@@ -144,10 +290,8 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
     }
   }
 
-
-
-  const handleClose = () => {
-    stopScan()
+  const handleClose = async () => {
+    await stopScan()
     onClose()
   }
 
@@ -205,6 +349,17 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
         {/* Camera Scanning Section */}
         {scanMethod === 'camera' && (
           <div className="space-y-3 sm:space-y-4">
+            {/* Permission check alert */}
+            {permissionGranted === false && (
+              <Alert
+                message="Camera Permission Required"
+                description="Please allow camera access to scan QR codes. You can also use manual entry instead."
+                type="warning"
+                showIcon
+                className="text-sm"
+              />
+            )}
+
             {/* QR Reader Container */}
             <div className="relative bg-gray-100 rounded-lg overflow-hidden">
               <div 
@@ -222,8 +377,15 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                   <div className="text-white text-center space-y-3 sm:space-y-4 p-4">
                     <CameraOutlined className="text-4xl sm:text-6xl" />
                     <div>
-                      <p className="text-base sm:text-lg font-medium">Ready to Scan</p>
-                      <p className="text-xs sm:text-sm opacity-75 px-2">Tap "Start Camera" to begin scanning</p>
+                      <p className="text-base sm:text-lg font-medium">
+                        {permissionGranted === false ? 'Camera Access Needed' : 'Ready to Scan'}
+                      </p>
+                      <p className="text-xs sm:text-sm opacity-75 px-2">
+                        {permissionGranted === false 
+                          ? 'Please allow camera permission to continue'
+                          : 'Tap "Start Camera" to begin scanning'
+                        }
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -239,9 +401,14 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                   onClick={startScan}
                   className="flex-1 min-h-[48px] text-sm sm:text-base"
                   icon={<CameraOutlined />}
+                  disabled={!isInitialized}
                 >
-                  <span className="hidden sm:inline">Start Camera</span>
-                  <span className="sm:hidden">Start</span>
+                  <span className="hidden sm:inline">
+                    {permissionGranted === false ? 'Request Camera Access' : 'Start Camera'}
+                  </span>
+                  <span className="sm:hidden">
+                    {permissionGranted === false ? 'Allow Camera' : 'Start'}
+                  </span>
                 </Button>
               ) : (
                 <Button
@@ -261,6 +428,8 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
               <Text className="text-gray-600 text-xs sm:text-sm block px-2">
                 {isScanning 
                   ? "Position the QR code within the camera frame to scan automatically" 
+                  : permissionGranted === false
+                  ? "Camera permission is required to scan QR codes. You can use manual entry as an alternative."
                   : "Make sure to allow camera permissions when prompted"
                 }
               </Text>
