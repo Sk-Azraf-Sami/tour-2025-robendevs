@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Modal, Button, Alert, Input, Radio, Typography, Divider } from 'antd'
 import { CloseOutlined, CameraOutlined, EditOutlined, CheckOutlined } from '@ant-design/icons'
 import { Html5QrcodeScanner } from "html5-qrcode"
+import './styles/mobile.css'
 
 const { Text } = Typography
 

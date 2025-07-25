@@ -1,0 +1,67 @@
+/* Style html5-qrcode controls for better mobile appearance */
+#qr-reader__dashboard_section_csr,
+#qr-reader__dashboard_section_swaplink,
+#qr-reader__dashboard_section_zoom {
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin: 8px 0 !important;
+}
+
+#qr-reader__dashboard_section_csr select,
+#qr-reader__dashboard_section_csr button,
+#qr-reader__dashboard_section_swaplink button,
+#qr-reader__dashboard_section_zoom input[type="range"] {
+  width: 100% !important;
+  font-size: 16px !important;
+  padding: 8px !important;
+  border-radius: 8px !important;
+  margin-bottom: 6px !important;
+}
+
+#qr-reader__dashboard_section_csr label,
+#qr-reader__dashboard_section_zoom label {
+  font-size: 15px !important;
+  margin-bottom: 4px !important;
+}
+
+#qr-reader__dashboard_section_csr,
+#qr-reader__dashboard_section_swaplink {
+  margin-bottom: 8px !important;
+}
+
+#qr-reader__dashboard_section_swaplink button,
+#qr-reader__dashboard_section_csr button,
+#qr-reader__dashboard_section_zoom input[type="range"] {
+  background: #f0f4ff !important;
+  color: #222 !important;
+  border: 1px solid #b3c6ff !important;
+}
+
+#qr-reader__dashboard_section_csr select {
+  background: #fff !important;
+  border: 1px solid #b3c6ff !important;
+}
+
+#qr-reader__dashboard_section_swaplink button,
+#qr-reader__dashboard_section_csr button {
+  min-height: 40px !important;
+}
+
+#qr-reader__dashboard_section_swaplink button:active,
+#qr-reader__dashboard_section_csr button:active {
+  background: #e0e7ff !important;
+}
+
+#qr-reader__dashboard_section {
+  padding: 0 8px !important;
+}
+
+#qr-reader__dashboard_section_csr,
+#qr-reader__dashboard_section_swaplink,
+#qr-reader__dashboard_section_zoom {
+  border-radius: 8px !important;
+  background: #f8fafc !important;
+  padding: 8px !important;
+}
