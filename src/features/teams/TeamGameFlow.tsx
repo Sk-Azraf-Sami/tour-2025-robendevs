@@ -167,7 +167,7 @@ export default function TeamGameFlow() {
       const result = await GameService.validateQRCode(user.id, qrCode);
 
       if (result.success && result.mcq) {
-        // Regular checkpoint with MCQ
+        // All checkpoints (including first checkpoint cp_0) now require MCQ
         api.success({
           message: "QR Code Verified",
           description: "Proceeding to MCQ.",
@@ -189,29 +189,6 @@ export default function TeamGameFlow() {
           ...prev,
           currentStage: "mcq",
           currentMCQ: formattedMCQ,
-          scannedCode: qrCode,
-        }));
-      } else if (result.success && result.puzzle) {
-        // First checkpoint - no MCQ, skip directly to puzzle
-        api.success({
-          message: "First Checkpoint Completed",
-          description: "No MCQ required. Proceeding to next checkpoint puzzle.",
-          showProgress: true,
-        });
-
-        // Convert backend puzzle format to frontend format
-        const formattedPuzzle: PuzzleData = {
-          id: result.puzzle.id,
-          text: result.puzzle.text,
-          imageURL: result.puzzle.imageURL,
-          hint: result.puzzle.hint || '',
-        };
-
-        setGameState((prev) => ({
-          ...prev,
-          currentStage: "puzzle",
-          currentPuzzle: formattedPuzzle,
-          currentCheckpointIndex: prev.currentCheckpointIndex + 1,
           scannedCode: qrCode,
         }));
       } else {

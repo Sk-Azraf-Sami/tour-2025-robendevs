@@ -12,8 +12,8 @@ interface TeamProgress {
 
 interface QRValidationResult {
   success: boolean;
-  mcq?: MCQ;
-  puzzle?: Puzzle;  // For first checkpoint that completes immediately
+  mcq?: MCQ;      // MCQ for this checkpoint (all checkpoints require MCQ)
+  puzzle?: Puzzle; // Unused - legacy field for backward compatibility
   message: string;
 }
 
@@ -180,48 +180,8 @@ export class GameService {
       // First scan of this checkpoint - record start time
       currentLeg.startTime = currentTime;
       
-      // Special handling for first checkpoint (cp_0) - no MCQ, immediate completion, 0 points
-      if (currentLeg.isFirstCheckpoint) {
-        currentLeg.endTime = currentTime; // Same as start time for first checkpoint
-        currentLeg.timeTaken = 0; // No time taken for first checkpoint
-        currentLeg.puzzlePoints = 0; // No points for first checkpoint as per requirements
-        currentLeg.mcqPoints = 0; // No MCQ points for first checkpoint
-        currentLeg.timeBonus = 0; // No time bonus for instant completion
-        
-        // Update team progress immediately for first checkpoint
-        const newCurrentIndex = team.currentIndex + 1;
-        const isGameComplete = newCurrentIndex >= team.roadmap.length;
-        const newTotalPoints = team.totalPoints; // No points added for first checkpoint
-        
-        // Note: Don't set start time for next checkpoint here - it should only be set when they scan the next QR code
-        
-        await FirestoreService.updateTeam(teamId, {
-          legs: updatedLegs,
-          currentIndex: newCurrentIndex,
-          totalPoints: newTotalPoints,
-          isActive: !isGameComplete
-        });
-        
-        if (isGameComplete) {
-          return { 
-            success: true, 
-            message: `Game completed! First checkpoint gives no points. Total: ${newTotalPoints} points!` 
-          };
-        } else {
-          // Get next puzzle for the team
-          const nextPuzzleId = team.roadmap[newCurrentIndex];
-          const nextPuzzle = await FirestoreService.getPuzzle(nextPuzzleId);
-          return { 
-            success: true, 
-            message: `First checkpoint completed! No points awarded for the starting checkpoint. Find the next checkpoint using this puzzle clue.`,
-            mcq: undefined, // No MCQ for first checkpoint
-            puzzle: nextPuzzle || undefined
-          };
-        }
-      } else {
-        // Regular checkpoint - save start time and continue to MCQ
-        await FirestoreService.updateTeam(teamId, { legs: updatedLegs });
-      }
+      // All checkpoints (including cp_0) now require MCQ - save start time and continue to MCQ
+      await FirestoreService.updateTeam(teamId, { legs: updatedLegs });
     }
 
     return { 
@@ -266,18 +226,6 @@ export class GameService {
       };
     }
 
-    // Check if this is the first checkpoint (should not have MCQ)
-    const currentLeg = team.legs[team.currentIndex];
-    if (currentLeg?.isFirstCheckpoint) {
-      return { 
-        success: false, 
-        isGameComplete: false, 
-        pointsEarned: 0, 
-        timeBonus: 0, 
-        message: 'First checkpoint does not require MCQ answer' 
-      };
-    }
-
     // Get all MCQs and find the one with the matching option
     const allMCQs = await FirestoreService.getAllMCQs();
     let selectedOption: MCQOption | null = null;
@@ -315,6 +263,7 @@ export class GameService {
 
     // Calculate time bonus/penalty based on PRD specifications and round_time setting
     const currentTime = Date.now();
+    const currentLeg = team.legs[team.currentIndex];
     const legStartTime = currentLeg?.startTime || currentTime;
     const timeSpentSeconds = Math.floor((currentTime - legStartTime) / 1000);
     const timeSpentMinutes = Math.floor(timeSpentSeconds / 60);
@@ -1213,13 +1162,21 @@ export class GameService {
       const checkpointLabel = `Checkpoint ${index} (${leg.checkpoint})`;
       
       if (leg.isFirstCheckpoint) {
-        // First checkpoint should have all 0s
-        if (leg.startTime === 0 && leg.endTime === 0 && leg.timeTaken === 0 &&
-            leg.mcqPoints === 0 && leg.puzzlePoints === 0 && leg.timeBonus === 0) {
-          // This is correct for first checkpoint
-        } else {
-          timingIssues.push(`${checkpointLabel}: First checkpoint should have all timing/points = 0`);
-          recommendations.push('Reset first checkpoint data to all 0s');
+        // First checkpoint (cp_0) now requires MCQ like other checkpoints
+        if (index < team.currentIndex) {
+          // Completed first checkpoint should have proper timing and points data
+          if (leg.startTime === 0) {
+            timingIssues.push(`${checkpointLabel}: Missing start time for completed first checkpoint`);
+            recommendations.push(`Set start time for ${checkpointLabel}`);
+          }
+          if (leg.endTime === 0) {
+            timingIssues.push(`${checkpointLabel}: Missing end time for completed first checkpoint`);
+            recommendations.push(`Set end time for ${checkpointLabel}`);
+          }
+          if (leg.timeTaken === 0 && leg.startTime > 0 && leg.endTime && leg.endTime > 0) {
+            timingIssues.push(`${checkpointLabel}: Time taken should be calculated`);
+            recommendations.push(`Calculate timeTaken = (endTime - startTime) / 1000`);
+          }
         }
       } else {
         // Regular checkpoints - check for timing issues
@@ -1333,9 +1290,9 @@ export class GameService {
         }
       }
       
-      // Collect timing data for completed checkpoints
+      // Collect timing data for completed checkpoints (now including first checkpoint)
       team.legs.forEach((leg, index) => {
-        if (index < team.currentIndex && leg.timeTaken > 0 && !leg.isFirstCheckpoint) {
+        if (index < team.currentIndex && leg.timeTaken > 0) {
           if (!checkpointTimes[leg.checkpoint]) {
             checkpointTimes[leg.checkpoint] = [];
           }
