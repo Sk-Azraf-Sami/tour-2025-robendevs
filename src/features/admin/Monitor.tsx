@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Typography, Row, Col, Table, Badge, Progress, Button, Space, Tag, Drawer, Descriptions, message, Timeline, Statistic, Modal, Input } from 'antd'
+import { Card, Typography, Row, Col, Table, Badge, Progress, Button, Space, Tag, Drawer, Descriptions, message, Timeline, Statistic} from 'antd'
 import { 
   MonitorOutlined, 
   PlayCircleOutlined, 
@@ -11,7 +11,7 @@ import {
   TrophyOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
-  WarningOutlined,
+  //WarningOutlined,
   RedoOutlined
 } from '@ant-design/icons'
 import { GameService } from '../../services/GameService'

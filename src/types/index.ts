@@ -67,6 +67,7 @@ export interface Puzzle {
   imageURL?: string;
   code: string;
   isStarting?: boolean;
+  hint?: string; 
 }
 
 export interface Admin {

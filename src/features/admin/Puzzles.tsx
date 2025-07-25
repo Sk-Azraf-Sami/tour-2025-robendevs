@@ -33,6 +33,8 @@ interface FormValues {
   text: string
   imageURL?: string
   code: string
+  hint?: string
+  checkpoint: string
 }
 
 export default function Puzzles() {
@@ -65,7 +67,7 @@ export default function Puzzles() {
   const handleSubmit = async (values: FormValues) => {
     setIsLoading(true)
     try {
-      // Find index for checkpoint and isStarting
+      // Find index for isStarting
       let puzzleIndex = editingPuzzle
         ? puzzles.findIndex(p => p.id === editingPuzzle.id)
         : puzzles.length
@@ -73,13 +75,18 @@ export default function Puzzles() {
       const puzzleData: Partial<Puzzle> = {
         text: values.text.trim(),
         code: values.code.trim(),
-        checkpoint: `cp_${puzzleIndex}`,
+        checkpoint: values.checkpoint.trim(),
         isStarting: puzzleIndex === 0,
       }
 
       // Only include imageURL if it has a valid value
       if (values.imageURL && values.imageURL.trim()) {
         puzzleData.imageURL = values.imageURL.trim()
+      }
+
+      // Only include hint if it has a valid value
+      if (values.hint && values.hint.trim()) {
+        puzzleData.hint = values.hint.trim()
       }
 
       if (editingPuzzle) {
@@ -112,7 +119,9 @@ export default function Puzzles() {
     form.setFieldsValue({
       text: puzzle.text,
       imageURL: puzzle.imageURL,
-      code: puzzle.code
+      code: puzzle.code,
+      hint: puzzle.hint,
+      checkpoint: puzzle.checkpoint
     })
     setIsModalOpen(true)
   }
@@ -134,34 +143,55 @@ export default function Puzzles() {
     form.setFieldsValue({
       text: '',
       imageURL: '',
-      code: ''
+      code: '',
+      hint: '',
+      checkpoint: ''
     })
     setIsModalOpen(true)
   }
 
   const columns = [
     {
-      title: 'Puzzle',
-      dataIndex: 'text',
-      key: 'text',
-      render: (text: string, record: Puzzle) => (
-        <div className="flex items-start gap-3">
-          {record.imageURL && (
-            <Image
-              src={record.imageURL}
-              alt="Puzzle"
-              width={60}
-              height={60}
-              className="rounded-lg object-cover"
-              fallback="/placeholder.svg"
-            />
-          )}
-          <div className="flex-1">
-            <Text className="font-medium">{text}</Text>
+  title: 'Puzzle',
+  dataIndex: 'text',
+  key: 'text',
+  width: 260, // Fixed column width
+  ellipsis: true, // Enable text truncation
+  render: (text: string, record: Puzzle) => (
+    <div className="flex items-start gap-3" style={{ minWidth: 0 }}>
+      {record.imageURL && (
+        <Image
+          src={record.imageURL}
+          alt="Puzzle"
+          width={60}
+          height={60}
+          className="rounded-lg object-cover"
+          fallback="/placeholder.svg"
+        />
+      )}
+      <div className="flex-1" style={{ minWidth: 0 }}>
+        <Text
+          className="font-medium"
+          style={{
+            display: 'block',
+            maxWidth: 180,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}
+          title={text}
+        >
+          {text.length > 60 ? `${text.slice(0, 57)}...` : text}
+        </Text>
+        {record.hint && (
+          <div>
+            <Text type="secondary" className="text-xs block mt-1">Hint: {record.hint}</Text>
           </div>
-        </div>
-      )
-    },
+        )}
+      </div>
+    </div>
+  )
+},
     {
       title: 'Code',
       dataIndex: 'code',
@@ -221,11 +251,11 @@ export default function Puzzles() {
     }
   ]
 
-  const categories = [
-    { name: "Logic Puzzles", count: 0, icon: "🧩" },
-    { name: "Word Puzzles", count: 0, icon: "📝" },
-    { name: "Math Puzzles", count: 0, icon: "🔢" }
-  ]
+  // const categories = [
+  //   { name: "Logic Puzzles", count: 0, icon: "🧩" },
+  //   { name: "Word Puzzles", count: 0, icon: "📝" },
+  //   { name: "Math Puzzles", count: 0, icon: "🔢" }
+  // ]
 
   const stats = [
     { title: "Total Puzzles", value: puzzles.length, color: "text-green-600" },
@@ -264,7 +294,7 @@ export default function Puzzles() {
         ))}
       </Row>
 
-      {/* Categories */}
+      {/* Categories 
       <Card title={<span className="text-sm sm:text-base">Puzzle Categories</span>}>
         <Row gutter={[12, 12]} className="sm:gutter-16">
           {categories.map((category, index) => (
@@ -278,7 +308,7 @@ export default function Puzzles() {
           ))}
         </Row>
       </Card>
-
+*/}
       {/* Puzzles Table */}
       <Card title={<span className="text-sm sm:text-base">Puzzles Library</span>}>
         {isLoading ? (
@@ -364,6 +394,25 @@ export default function Puzzles() {
           </Form.Item>
 
           <Form.Item
+            name="hint"
+            label="Puzzle Hint (Optional)"
+          >
+            <Input
+              placeholder="Enter a hint for this puzzle (optional)"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="checkpoint"
+            label="Checkpoint"
+            rules={[{ required: true, message: 'Please enter the checkpoint' }]}
+          >
+            <Input
+              placeholder="Enter checkpoint for this puzzle"
+            />
+          </Form.Item>
+
+          <Form.Item
             name="code"
             label="Unique Code"
             rules={[{ required: true, message: 'Please enter or generate a unique code' }]}
@@ -387,7 +436,7 @@ export default function Puzzles() {
             </Button>
             <Button type="primary" htmlType="submit" loading={isLoading}>
               {editingPuzzle ? 'Update' : 'Create'} Puzzle
-            </Button>
+              </Button>
           </div>
         </Form>
       </Modal>
