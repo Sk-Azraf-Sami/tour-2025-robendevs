@@ -352,34 +352,95 @@ export default function TeamGameFlow() {
 
   if (gameState.currentStage === "complete") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center shadow-lg">
-          <div className="mb-6">
-            <TrophyOutlined className="text-6xl text-yellow-500 mb-4" />
-            <Title level={2} className="text-green-600">
-              Congratulations!
-            </Title>
-            <Text className="text-lg">You've completed the treasure hunt!</Text>
-          </div>
-          <div className="space-y-2 mb-6">
-            <div className="flex justify-between">
-              <Text strong>Total Time:</Text>
-              <Text>{formatTime(gameState.elapsedTime)}</Text>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-lg mx-auto space-y-4">
+          {/* Main Celebration Card */}
+          <Card className="border-4 border-yellow-300 bg-gradient-to-r from-yellow-50 to-orange-50 shadow-2xl relative overflow-hidden">
+            {/* Decorative background pattern */}
+            <div 
+              className="absolute inset-0 opacity-5"
+              style={{
+                background: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23fbbf24" fill-opacity="0.3"%3E%3Ccircle cx="30" cy="30" r="2"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")'
+              }}
+            />
+            
+            <div className="relative text-center space-y-4 sm:space-y-6 py-4 sm:py-8">
+              {/* Trophy and confetti effect */}
+              <div className="relative">
+                <div className="text-6xl sm:text-8xl mb-4 relative">🏆</div>
+                <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 text-2xl sm:text-4xl animate-bounce">
+                  🎉
+                </div>
+                <div className="absolute top-0 right-1/4 text-xl sm:text-3xl animate-pulse">
+                  ✨
+                </div>
+                <div className="absolute top-2 left-1/4 text-xl sm:text-3xl animate-ping">
+                  🎊
+                </div>
+              </div>
+
+              {/* Celebration Text */}
+              <div className="space-y-2 sm:space-y-3">
+                <Title 
+                  level={1} 
+                  className="text-2xl sm:text-3xl md:text-4xl !mb-0"
+                  style={{ 
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}
+                >
+                  MISSION ACCOMPLISHED!
+                </Title>
+                <Text className="text-base sm:text-lg md:text-xl text-amber-700 font-medium block">
+                  🎯 You've conquered the treasure hunt! 🎯
+                </Text>
+                <Text className="text-sm sm:text-base text-amber-600">
+                  What an adventure! Your team has successfully navigated through all the challenges.
+                </Text>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <Text strong>Total Points:</Text>
-              <Text className="text-green-600 font-bold">
-                {gameState.totalPoints}
+          </Card>
+
+          {/* Time Achievement Card */}
+          <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-lg">
+            <div className="text-center space-y-3 sm:space-y-4">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <ClockCircleOutlined className="text-2xl sm:text-3xl text-blue-600" />
+                <Title level={3} className="text-lg sm:text-xl !mb-0 text-blue-700">
+                  Your Journey Time
+                </Title>
+              </div>
+              
+              <div className="bg-white rounded-xl p-4 sm:p-6 border-2 border-blue-100">
+                <div className="text-3xl sm:text-5xl font-bold text-indigo-600 mb-2">
+                  {formatTime(gameState.elapsedTime)}
+                </div>
+                <Text className="text-sm sm:text-base text-gray-600">
+                  ⏱️ From start to finish
+                </Text>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <Text className="text-xs sm:text-sm text-blue-600">
+                  🚀 All {gameState.totalCheckpoints} checkpoints completed!
+                </Text>
+              </div>
+            </div>
+          </Card>
+
+          {/* Fun Completion Message */}
+          <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 shadow-lg">
+            <div className="text-center space-y-3">
+              <div className="text-4xl sm:text-6xl mb-2">🎊🎉🏅</div>
+              <Text className="text-sm sm:text-base text-purple-700 font-medium">
+                Awesome teamwork! You've proven yourselves as true treasure hunters. 
+                Take a moment to celebrate this epic achievement! 🌟
               </Text>
             </div>
-            <div className="flex justify-between">
-              <Text strong>Checkpoints:</Text>
-              <Text>
-                {gameState.totalCheckpoints}/{gameState.totalCheckpoints}
-              </Text>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
     );
   }
