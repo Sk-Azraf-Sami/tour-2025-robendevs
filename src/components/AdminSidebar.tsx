@@ -81,17 +81,23 @@ export default function AdminSidebar({ collapsed, isMobile = false, onMenuClick 
 
   const sidebarContent = (
     <>
-      <div className="p-3 sm:p-4 border-b border-gray-200">
+      <div className="p-3 sm:p-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-blue-50">
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-indigo-500 rounded-lg flex-shrink-0">
+          <div 
+            className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex-shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              boxShadow: '0 4px 8px rgba(79, 70, 229, 0.3)'
+            }}
+          >
             <TrophyOutlined className="text-white text-sm sm:text-lg" />
           </div>
           {(!collapsed || isMobile) && (
             <div className="min-w-0 flex-1">
-              <Title level={5} className="!mb-0 !text-gray-900 text-sm sm:!text-base truncate">
+              <Title level={5} className="!mb-0 !text-gray-900 text-sm sm:!text-base truncate font-bold">
                 Treasure Hunt
               </Title>
-              <Text className="text-xs text-gray-500 block">Admin Panel</Text>
+              <Text className="text-xs text-indigo-600 block font-medium">Admin Panel</Text>
             </div>
           )}
         </div>
@@ -121,12 +127,16 @@ export default function AdminSidebar({ collapsed, isMobile = false, onMenuClick 
           />
         </div>
 
-        <div className="border-t border-gray-200 p-3 sm:p-4">
+        <div className="border-t border-gray-200 p-3 sm:p-4 bg-gradient-to-r from-red-50 to-pink-50">
           <Button
             type="text"
             icon={<LogoutOutlined />}
             onClick={handleLogout}
-            className="w-full flex items-center justify-start text-sm sm:text-base hover:bg-red-50"
+            className="w-full flex items-center justify-start text-sm sm:text-base hover:bg-red-50 border-0 rounded-lg transition-all duration-300"
+            style={{
+              color: '#dc2626',
+              fontWeight: '500'
+            }}
             danger
           >
             {(!collapsed || isMobile) && <span className="ml-2">Logout</span>}
