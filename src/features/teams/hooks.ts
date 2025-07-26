@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import type { TeamData } from '../../types'
 import { TEAM_CONSTANTS } from './constants'
 
-// Hook for managing team timer
+// Hook for managing team timer - this is for legacy components
+// Modern components should fetch elapsed time from backend via GameService.getTeamProgress()
 export const useTeamTimer = (initialTime: number, isActive: boolean) => {
   const [currentTime, setCurrentTime] = useState(initialTime)
 
