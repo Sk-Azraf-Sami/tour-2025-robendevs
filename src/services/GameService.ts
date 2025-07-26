@@ -870,10 +870,28 @@ export class GameService {
           status = "not_started";
         }
 
-        // Calculate total elapsed time since game start
-        const totalTimeElapsed = team.gameStartTime
-          ? Math.floor((currentTime - team.gameStartTime) / 1000)
-          : team.totalTime;
+        // Calculate total elapsed time based on team status
+        let totalTimeElapsed: number;
+        
+        if (completionPercentage === 100) {
+          // For completed teams: Use checkpoint-based calculation (first start to last end)
+          const firstLeg = team.legs.find(leg => leg.startTime > 0);
+          const lastLeg = team.legs.filter(leg => leg.endTime && leg.endTime > 0).pop();
+          
+          if (firstLeg && lastLeg && firstLeg.startTime && lastLeg.endTime) {
+            totalTimeElapsed = Math.floor((lastLeg.endTime - firstLeg.startTime) / 1000);
+          } else {
+            // Fallback to game-based calculation if checkpoint data is incomplete
+            totalTimeElapsed = team.gameStartTime
+              ? Math.floor((currentTime - team.gameStartTime) / 1000)
+              : team.totalTime;
+          }
+        } else {
+          // For active/incomplete teams: Use game-based calculation (real-time)
+          totalTimeElapsed = team.gameStartTime
+            ? Math.floor((currentTime - team.gameStartTime) / 1000)
+            : team.totalTime;
+        }
 
         return {
           teamId: team.id,
