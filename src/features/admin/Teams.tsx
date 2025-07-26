@@ -7,7 +7,6 @@ import {
   Modal,
   Form,
   Input,
-  Space,
   Badge,
   Popconfirm,
   message,
@@ -22,6 +21,9 @@ import {
   TeamOutlined,
   UserOutlined,
   LockOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
 import { FirestoreService } from "../../services/FireStoreService";
 import type { Team as FirestoreTeam, Puzzle } from "../../types";
@@ -55,6 +57,11 @@ export default function Teams() {
   const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(true);
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
+
+  // For reorder modal
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+  const [reorderTeam, setReorderTeam] = useState<Team | null>(null);
+  const [reorderRoadmap, setReorderRoadmap] = useState<string[]>([]);
 
   // Load teams and puzzles from Firestore
   useEffect(() => {
@@ -245,6 +252,61 @@ export default function Teams() {
     setIsLoading(false);
   };
 
+  // --- REORDER ROADMAP FEATURE ---
+  const handleOpenReorder = (team: Team) => {
+    setReorderTeam(team);
+    setReorderRoadmap(team.roadmap ? [...team.roadmap] : []);
+    setIsReorderModalOpen(true);
+  };
+
+  const moveCheckpoint = (from: number, to: number) => {
+    if (!reorderRoadmap) return;
+    if (to < 0 || to >= reorderRoadmap.length) return;
+    const updated = [...reorderRoadmap];
+    const [removed] = updated.splice(from, 1);
+    updated.splice(to, 0, removed);
+    setReorderRoadmap(updated);
+  };
+
+  const handleSaveReorder = async () => {
+    if (!reorderTeam) return;
+    setIsLoading(true);
+    try {
+      await FirestoreService.updateTeam(reorderTeam.id, {
+        roadmap: reorderRoadmap,
+      });
+      message.success("Roadmap order updated");
+      // Refresh teams
+      const firestoreTeams = await FirestoreService.getAllTeams();
+      setTeams(
+        firestoreTeams.map((t) => ({
+          id: t.id,
+          name: t.username,
+          username: t.username,
+          password: t.passwordHash || "",
+          members: t.members,
+          progress:
+            t.roadmap && t.roadmap.length > 0
+              ? Math.round(((t.currentIndex || 0) / t.roadmap.length) * 100)
+              : 0,
+          status: t.isActive
+            ? t.currentIndex >= (t.roadmap?.length || 0)
+              ? "completed"
+              : "active"
+            : "inactive",
+          currentCheckpoint: (t.currentIndex || 0) + 1,
+          createdAt: t.createdAt || "",
+          roadmap: t.roadmap,
+        }))
+      );
+      setIsReorderModalOpen(false);
+      setReorderTeam(null);
+    } catch (err) {
+      message.error("Failed to update roadmap order");
+    }
+    setIsLoading(false);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
@@ -300,18 +362,30 @@ export default function Teams() {
     {
       title: "Roadmap",
       key: "roadmap",
-      render: (_: unknown, record: Team) => (
-        <div className="flex flex-wrap gap-1">
-          {(record.roadmap || []).map((cp, idx) => (
-            <span
-              key={cp}
-              className="inline-block bg-indigo-100 text-indigo-700 rounded px-2 py-0.5 text-xs"
-            >
-              {idx + 1}: {puzzleNameMap[cp] || cp}
-            </span>
-          ))}
-        </div>
-      ),
+      render: (_: unknown, record: Team) => {
+        const roadmap = record.roadmap || [];
+        // Split roadmap into chunks of 2
+        const rows = [];
+        for (let i = 0; i < roadmap.length; i += 2) {
+          rows.push(roadmap.slice(i, i + 2));
+        }
+        return (
+          <div className="flex flex-col gap-1">
+            {rows.map((row, rowIdx) => (
+              <div className="flex flex-wrap gap-1" key={rowIdx}>
+                {row.map((cp, idx) => (
+                  <span
+                    key={cp}
+                    className="inline-block bg-indigo-100 text-indigo-700 rounded px-2 py-0.5 text-xs"
+                  >
+                    {rowIdx * 2 + idx + 1}: {puzzleNameMap[cp] || cp}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        );
+      },
     },
     {
       title: "Progress",
@@ -357,31 +431,49 @@ export default function Teams() {
       title: "Actions",
       key: "actions",
       render: (_: unknown, record: Team) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-            size="small"
-          />
-          <Popconfirm
-            title="Delete Team"
-            description="Are you sure you want to delete this team?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
-            placement="topRight"
-          >
-            <Button type="text" icon={<DeleteOutlined />} danger size="small" />
-          </Popconfirm>
-          <Button
-            type={record.status === "active" ? "default" : "primary"}
-            size="small"
-            onClick={() => handleToggleActive(record)}
-          >
-            {record.status === "active" ? "Deactivate" : "Activate"}
-          </Button>
-        </Space>
+        <div className="flex flex-col gap-1">
+          <div>
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
+              size="small"
+            />
+            <Button
+              type={record.status === "active" ? "default" : "primary"}
+              size="small"
+              onClick={() => handleToggleActive(record)}
+              className="ml-3"
+            >
+              {record.status === "active" ? "Deactivate" : "Activate"}
+            </Button>
+          </div>
+          <div>
+            <Popconfirm
+              title="Delete Team"
+              description="Are you sure you want to delete this team?"
+              onConfirm={() => handleDelete(record.id)}
+              okText="Yes"
+              cancelText="No"
+              placement="topRight"
+            >
+              <Button
+                type="text"
+                icon={<DeleteOutlined />}
+                danger
+                size="small"
+              />
+            </Popconfirm>
+            <Button
+              icon={<SwapOutlined />}
+              size="small"
+              onClick={() => handleOpenReorder(record)}
+              className="ml-3"
+            >
+              Reorder
+            </Button>
+          </div>
+        </div>
       ),
     },
   ];
@@ -548,6 +640,48 @@ export default function Teams() {
             </Button>
           </div>
         </Form>
+      </Modal>
+
+      {/* Reorder Roadmap Modal */}
+      <Modal
+        title={`Reorder Roadmap${reorderTeam ? `: ${reorderTeam.name}` : ""}`}
+        open={isReorderModalOpen}
+        onCancel={() => setIsReorderModalOpen(false)}
+        onOk={handleSaveReorder}
+        okText="Save"
+        confirmLoading={isLoading}
+        width={400}
+      >
+        {reorderRoadmap && reorderRoadmap.length > 0 ? (
+          <div>
+            {reorderRoadmap.map((cp, idx) => (
+              <div
+                key={cp}
+                className="flex items-center justify-between border rounded px-2 py-1 mb-2 bg-gray-50"
+              >
+                <span>
+                  {idx + 1}: {puzzleNameMap[cp] || cp}
+                </span>
+                <span>
+                  <Button
+                    icon={<ArrowUpOutlined />}
+                    size="small"
+                    disabled={idx === 0}
+                    onClick={() => moveCheckpoint(idx, idx - 1)}
+                  />
+                  <Button
+                    icon={<ArrowDownOutlined />}
+                    size="small"
+                    disabled={idx === reorderRoadmap.length - 1}
+                    onClick={() => moveCheckpoint(idx, idx + 1)}
+                  />
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Text type="secondary">No roadmap to reorder.</Text>
+        )}
       </Modal>
     </div>
   );
