@@ -95,7 +95,17 @@ export default function AdminPage() {
                     )
                   }
                   onClick={handleMenuToggle}
-                  className="text-base sm:text-lg w-10 h-10 sm:w-12 sm:h-12 text-white hover:bg-white hover:bg-opacity-10"
+                  className="flex items-center justify-center border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    backdropFilter: 'blur(10px)',
+                    color: '#fff',
+                    fontWeight: '500',
+                    borderRadius: '12px',
+                    width: '44px',
+                    height: '44px',
+                    minWidth: '44px'
+                  }}
                 />
                 
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -127,7 +137,9 @@ export default function AdminPage() {
           </div>
         </Header>
         <Content className="overflow-auto min-h-full" style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)' }}>
-          <Outlet />
+          <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+            <Outlet />
+          </div>
         </Content>
       </Layout>
     </Layout>
