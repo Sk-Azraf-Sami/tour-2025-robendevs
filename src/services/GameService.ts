@@ -138,12 +138,10 @@ export class GameService {
     } else if (firstCheckpointWithStart) {
       // For teams in progress: time from first checkpoint start to current time
       elapsedTime = Math.floor((currentTime - firstCheckpointWithStart.startTime) / 1000);
-    } else if (team.gameStartTime) {
-      // Fallback to game start time for teams that haven't started any checkpoints
-      elapsedTime = Math.floor((currentTime - team.gameStartTime) / 1000);
     } else {
-      // Final fallback to stored total time
-      elapsedTime = team.totalTime;
+      // For teams that haven't started any checkpoints yet: timer should be 0
+      // Timer only starts when they scan their first checkpoint
+      elapsedTime = 0;
     }
 
     return {
