@@ -6,13 +6,30 @@ import MCQQuestion from './MCQQuestion'
 import PuzzleView from './PuzzleView'
 import { useAuth } from '../../contexts/auth'
 // Import FireStoreService and GameService for backend integration
-// import { FirestoreService } from '../../services/FireStoreService'
+import { FirestoreService } from '../../services/FireStoreService'
 // import { GameService } from '../../services/GameService'
+// Import types
+import type { Puzzle } from '../../types'
 // Import types and constants
 // import { GAME_STAGES, POINTS_CONFIG } from './constants'
 // import type { TeamProgress as TeamProgressType, MCQ, Puzzle } from '../../types'
 
 const { Title, Text } = Typography
+
+/**
+ * Local MCQ interfaces to match component expectations
+ */
+interface MCQOption {
+  id: string
+  text: string
+  points: number
+}
+
+interface MCQ {
+  id: string
+  text: string
+  options: MCQOption[]
+}
 
 /**
  * Interface representing team's progress in the game
@@ -27,9 +44,10 @@ interface TeamProgress {
   totalPoints: number
   elapsedTime: number
   isGameActive: boolean
+  gameStartTime?: number
   currentStage: 'scan' | 'mcq' | 'puzzle' | 'complete'
-  currentMCQ?: any  // Replace with MCQ type from types/index.ts
-  currentPuzzle?: any  // Replace with Puzzle type from types/index.ts
+  currentMCQ?: MCQ  // Using local MCQ type that matches component expectations
+  currentPuzzle?: Puzzle  // Using proper Puzzle type from types/index.ts
 }
 
 export default function TeamDashboard() {
@@ -73,34 +91,71 @@ export default function TeamDashboard() {
   })
   const [showScanner, setShowScanner] = useState(false)
 
-  // Timer effect
+  // Real-time timer that syncs with Firebase gameStartTime
   useEffect(() => {
     if (!progress.isGameActive) return
     
-    /**
-     * BACKEND INTEGRATION:
-     * The timer functionality should be integrated with Firebase:
-     * 1. Instead of incrementing a local state, this should update the team's totalTime in Firestore
-     * 2. The backend should handle timer calculations and updates
-     * 
-     * Example:
-     * const interval = setInterval(async () => {
-     *   if (user?.id) {
-     *     await FirestoreService.updateTeam(user.id, {
-     *       totalTime: firebase.firestore.FieldValue.increment(1)
-     *     });
-     *   }
-     * }, 1000);
-     */
-    const interval = setInterval(() => {
-      setProgress(prev => ({
-        ...prev,
-        elapsedTime: prev.elapsedTime + 1
-      }))
-    }, 1000)
+    const updateElapsedTime = () => {
+      setProgress(prev => {
+        // Calculate elapsed time from gameStartTime if available
+        if (prev.gameStartTime) {
+          const currentTime = Date.now();
+          const elapsedTime = Math.floor((currentTime - prev.gameStartTime) / 1000);
+          return {
+            ...prev,
+            elapsedTime,
+          };
+        }
+        // Fallback to incrementing local time if no gameStartTime
+        return {
+          ...prev,
+          elapsedTime: prev.elapsedTime + 1,
+        };
+      });
+    };
 
-    return () => clearInterval(interval)
-  }, [progress.isGameActive])
+    const interval = setInterval(updateElapsedTime, 1000);
+    return () => clearInterval(interval);
+  }, [progress.isGameActive, progress.gameStartTime]);
+
+  // Real-time listener for team status changes (admin start/pause/resume actions)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const unsubscribe = FirestoreService.subscribeToTeam(user.id, (team) => {
+      if (!team) return;
+      
+      // Update game state based on real-time team data
+      setProgress((prev) => {
+        const currentTime = Date.now();
+        const hasStatusChanged = prev.isGameActive !== team.isActive;
+        const hasGameStartTimeChanged = prev.gameStartTime !== team.gameStartTime;
+        
+        if (hasStatusChanged || hasGameStartTimeChanged) {
+          console.log(`TeamDashboard: Game status changed: ${prev.isGameActive} -> ${team.isActive}`);
+          console.log(`TeamDashboard: Game start time: ${prev.gameStartTime} -> ${team.gameStartTime}`);
+          
+          // Calculate real-time elapsed time from gameStartTime
+          const elapsedTime = team.gameStartTime 
+            ? Math.floor((currentTime - team.gameStartTime) / 1000)
+            : 0;
+          
+          return {
+            ...prev,
+            isGameActive: team.isActive,
+            gameStartTime: team.gameStartTime,
+            elapsedTime,
+            // Also sync other important fields that might have changed
+            totalPoints: team.totalPoints,
+            currentCheckpoint: team.currentIndex + 1,
+          };
+        }
+        return prev;
+      });
+    });
+
+    return () => unsubscribe();
+  }, [user?.id]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)

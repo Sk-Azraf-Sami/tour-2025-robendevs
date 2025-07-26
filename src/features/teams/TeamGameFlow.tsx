@@ -55,6 +55,7 @@ import QRScanner from "./QRScanner";
 import MCQQuestion from "./MCQQuestion";
 import PuzzleView from "./PuzzleView";
 import { GameService } from "../../services/GameService";
+import { FirestoreService } from "../../services/FireStoreService";
 import { useAuth } from "../../contexts/auth";
 
 const { Title, Text } = Typography;
@@ -84,6 +85,7 @@ interface TeamGameState {
   totalPoints: number;
   elapsedTime: number;
   isGameActive: boolean;
+  gameStartTime?: number; // Firebase timestamp when game started
   roadmap: string[]; // Array of checkpoint IDs in order for this team
   currentMCQ?: MCQData;
   currentPuzzle?: PuzzleData;
@@ -110,19 +112,71 @@ export default function TeamGameFlow() {
     localStorage.setItem("teamGameFlowState", JSON.stringify(gameState));
   }, [gameState]);
 
-  // Timer effect for elapsed time
+  // Real-time timer that syncs with Firebase gameStartTime
   useEffect(() => {
     if (!gameState.isGameActive) return;
 
-    const interval = setInterval(() => {
-      setGameState((prev) => ({
-        ...prev,
-        elapsedTime: prev.elapsedTime + 1,
-      }));
-    }, 1000);
+    const updateElapsedTime = () => {
+      setGameState((prev) => {
+        // Calculate elapsed time from gameStartTime if available
+        if (prev.gameStartTime) {
+          const currentTime = Date.now();
+          const elapsedTime = Math.floor((currentTime - prev.gameStartTime) / 1000);
+          return {
+            ...prev,
+            elapsedTime,
+          };
+        }
+        // Fallback to incrementing local time if no gameStartTime
+        return {
+          ...prev,
+          elapsedTime: prev.elapsedTime + 1,
+        };
+      });
+    };
 
+    const interval = setInterval(updateElapsedTime, 1000);
     return () => clearInterval(interval);
-  }, [gameState.isGameActive]);
+  }, [gameState.isGameActive, gameState.gameStartTime]);
+
+  // Real-time listener for team status changes (admin start/pause/resume actions)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const unsubscribe = FirestoreService.subscribeToTeam(user.id, (team) => {
+      if (!team) return;
+      
+      // Update game state based on real-time team data
+      setGameState((prev) => {
+        const currentTime = Date.now();
+        const hasStatusChanged = prev.isGameActive !== team.isActive;
+        const hasGameStartTimeChanged = prev.gameStartTime !== team.gameStartTime;
+        
+        if (hasStatusChanged || hasGameStartTimeChanged) {
+          console.log(`Game status changed: ${prev.isGameActive} -> ${team.isActive}`);
+          console.log(`Game start time: ${prev.gameStartTime} -> ${team.gameStartTime}`);
+          
+          // Calculate real-time elapsed time from gameStartTime
+          const elapsedTime = team.gameStartTime 
+            ? Math.floor((currentTime - team.gameStartTime) / 1000)
+            : 0;
+          
+          return {
+            ...prev,
+            isGameActive: team.isActive,
+            gameStartTime: team.gameStartTime,
+            elapsedTime,
+            // Also sync other important fields that might have changed
+            totalPoints: team.totalPoints,
+            currentCheckpointIndex: team.currentIndex,
+          };
+        }
+        return prev;
+      });
+    });
+
+    return () => unsubscribe();
+  }, [user?.id]);
 
   // Initialize game state on mount
   const initializeGameState = useCallback(async () => {
@@ -149,6 +203,7 @@ export default function TeamGameFlow() {
         totalPoints: teamProgress.totalPoints,
         elapsedTime: teamProgress.elapsedTime,
         isGameActive: teamProgress.isGameActive,
+        gameStartTime: teamProgress.gameStartTime,
       }));
     } catch (error) {
       console.error("Failed to initialize game state:", error);

@@ -7,6 +7,7 @@ interface TeamProgress {
   totalPoints: number;
   elapsedTime: number;
   isGameActive: boolean;
+  gameStartTime?: number; // Firebase timestamp when game started
   legs: TeamLeg[];
 }
 
@@ -131,6 +132,7 @@ export class GameService {
       totalPoints: team.totalPoints,
       elapsedTime,
       isGameActive: team.isActive,
+      gameStartTime: team.gameStartTime,
       legs: team.legs,
     };
   }
