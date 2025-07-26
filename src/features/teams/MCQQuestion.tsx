@@ -98,6 +98,8 @@ export default function MCQQuestion({ question, onSubmit }: MCQQuestionProps) {
         className="mb-4"
       />
 
+      <br/>
+
       <Card className="border-2 border-blue-200">
         <Title level={5} className="mb-4">{currentQuestion.text}</Title>
         
@@ -126,6 +128,8 @@ export default function MCQQuestion({ question, onSubmit }: MCQQuestionProps) {
           </Space>
         </Radio.Group>
       </Card>
+
+      <br/>
 
       <div className="flex gap-3">
         <Button 

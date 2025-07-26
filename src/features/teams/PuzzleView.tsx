@@ -152,6 +152,8 @@ export default function PuzzleView({
         </div>
       </Card>
 
+      <br/>
+
       {/* Hint Card */}
       <Card className="mx-2 sm:mx-0">
         <Title level={4} className="text-base sm:text-lg">
@@ -189,6 +191,8 @@ export default function PuzzleView({
         )}
       </Card>
 
+      <br/>
+
       {/* Action Card */}
       <Card className="mx-2 sm:mx-0">
         <Title level={4} className="text-base sm:text-lg">
@@ -209,7 +213,7 @@ export default function PuzzleView({
             showIcon
             className="text-sm sm:text-base"
           />
-
+          <br/>
           <Button
             type="primary"
             size="large"
@@ -222,6 +226,8 @@ export default function PuzzleView({
         </div>
       </Card>
 
+      <br/>
+      
       {/* Instructions Card */}
       <Card className="mx-2 sm:mx-0">
         <Title level={4} className="text-base sm:text-lg">

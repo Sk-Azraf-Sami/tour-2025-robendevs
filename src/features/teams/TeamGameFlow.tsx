@@ -140,6 +140,29 @@ export default function TeamGameFlow() {
         return;
       }
 
+      // Try to restore the puzzle for the current checkpoint if needed
+      let currentPuzzle: PuzzleData | undefined = undefined;
+      if (
+        teamProgress.currentIndex > 0 && // Not at very start
+        teamProgress.currentIndex <= teamProgress.roadmap.length // Not completed
+      ) {
+        // Fetch the puzzle for the previous checkpoint (the one just completed)
+        const prevPuzzleId =
+          teamProgress.roadmap[teamProgress.currentIndex];
+        if (prevPuzzleId) {
+          const puzzleData =
+            await GameService.getPuzzleForCheckpoint(prevPuzzleId);
+          if (puzzleData) {
+            currentPuzzle = {
+              id: puzzleData.id,
+              text: puzzleData.text,
+              imageURL: puzzleData.imageURL,
+              hint: puzzleData.hint,
+            };
+          }
+        }
+      }
+
       setGameState((prev) => ({
         ...prev,
         currentStage: "scan",
@@ -149,6 +172,7 @@ export default function TeamGameFlow() {
         totalPoints: teamProgress.totalPoints,
         elapsedTime: teamProgress.elapsedTime,
         isGameActive: teamProgress.isGameActive,
+        currentPuzzle, // restore puzzle if possible
       }));
     } catch (error) {
       console.error("Failed to initialize game state:", error);
@@ -317,7 +341,7 @@ export default function TeamGameFlow() {
       ...prev,
       currentStage: "scan",
       currentMCQ: undefined,
-      currentPuzzle: undefined,
+      //currentPuzzle: undefined,
       scannedCode: undefined,
     }));
 
@@ -357,13 +381,14 @@ export default function TeamGameFlow() {
           {/* Main Celebration Card */}
           <Card className="border-4 border-yellow-300 bg-gradient-to-r from-yellow-50 to-orange-50 shadow-2xl relative overflow-hidden">
             {/* Decorative background pattern */}
-            <div 
+            <div
               className="absolute inset-0 opacity-5"
               style={{
-                background: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23fbbf24" fill-opacity="0.3"%3E%3Ccircle cx="30" cy="30" r="2"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")'
+                background:
+                  'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23fbbf24" fill-opacity="0.3"%3E%3Ccircle cx="30" cy="30" r="2"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
               }}
             />
-            
+
             <div className="relative text-center space-y-4 sm:space-y-6 py-4 sm:py-8">
               {/* Trophy and confetti effect */}
               <div className="relative">
@@ -381,14 +406,15 @@ export default function TeamGameFlow() {
 
               {/* Celebration Text */}
               <div className="space-y-2 sm:space-y-3">
-                <Title 
-                  level={1} 
+                <Title
+                  level={1}
                   className="text-2xl sm:text-3xl md:text-4xl !mb-0"
-                  style={{ 
-                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text'
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
                   }}
                 >
                   MISSION ACCOMPLISHED!
@@ -397,7 +423,8 @@ export default function TeamGameFlow() {
                   🎯 You've conquered the treasure hunt! 🎯
                 </Text>
                 <Text className="text-sm sm:text-base text-amber-600">
-                  What an adventure! Your team has successfully navigated through all the challenges.
+                  What an adventure! Your team has successfully navigated
+                  through all the challenges.
                 </Text>
               </div>
             </div>
@@ -408,11 +435,14 @@ export default function TeamGameFlow() {
             <div className="text-center space-y-3 sm:space-y-4">
               <div className="flex items-center justify-center gap-2 mb-3">
                 <ClockCircleOutlined className="text-2xl sm:text-3xl text-blue-600" />
-                <Title level={3} className="text-lg sm:text-xl !mb-0 text-blue-700">
+                <Title
+                  level={3}
+                  className="text-lg sm:text-xl !mb-0 text-blue-700"
+                >
                   Your Journey Time
                 </Title>
               </div>
-              
+
               <div className="bg-white rounded-xl p-4 sm:p-6 border-2 border-blue-100">
                 <div className="text-3xl sm:text-5xl font-bold text-indigo-600 mb-2">
                   {formatTime(gameState.elapsedTime)}
@@ -435,8 +465,8 @@ export default function TeamGameFlow() {
             <div className="text-center space-y-3">
               <div className="text-4xl sm:text-6xl mb-2">🎊🎉🏅</div>
               <Text className="text-sm sm:text-base text-purple-700 font-medium">
-                Awesome teamwork! You've proven yourselves as true treasure hunters. 
-                Take a moment to celebrate this epic achievement! 🌟
+                Awesome teamwork! You've proven yourselves as true treasure
+                hunters. Take a moment to celebrate this epic achievement! 🌟
               </Text>
             </div>
           </Card>
@@ -502,6 +532,8 @@ export default function TeamGameFlow() {
         </div>
       </Card>
 
+      <br/>
+
       {/* Stage-specific Content */}
       {gameState.currentStage === "scan" && (
         <Card className="mx-2 sm:mx-0">
@@ -514,6 +546,28 @@ export default function TeamGameFlow() {
               Find and scan the QR code at your current checkpoint location
             </Text>
 
+            {gameState.currentPuzzle && (
+              <Button
+                type="default"
+                shape="round"
+                icon={
+                  <span role="img" aria-label="View Puzzle">
+                    🔍
+                  </span>
+                }
+                className="!border-white !text-white !bg-red-400 hover:!bg-red-500 hover:!text-white transition-all shadow-sm px-3 py-1 text-xs sm:text-sm !font-extrabold"
+                onClick={() =>
+                  setGameState((prev) => ({
+                    ...prev,
+                    currentStage: "puzzle",
+                  }))
+                }
+              >
+                View Puzzle Again
+              </Button>
+            )}
+            <br/>
+            <br/>
             <Alert
               message="🗺️ Roadmap System - How It Works"
               description={
@@ -549,7 +603,7 @@ export default function TeamGameFlow() {
               showIcon
               className="mb-4 text-left text-sm sm:text-base"
             />
-
+            <br/>
             <Button
               type="primary"
               size="large"
@@ -588,7 +642,7 @@ export default function TeamGameFlow() {
           />
         </div>
       )}
-
+      <br/>
       {/* Help Card */}
       <Card size="small" className="bg-blue-50 border-blue-200 mx-2 sm:mx-0">
         <div className="space-y-2">
