@@ -120,10 +120,29 @@ export class GameService {
     const team = await FirestoreService.getTeam(teamId);
     if (!team) return null;
 
-    // Calculate real-time elapsed time since game started
+    // Calculate elapsed time based on checkpoint timing (first start to current time or last end)
     const currentTime = Date.now();
-    const gameStartTime = team.gameStartTime || currentTime;
-    const elapsedTime = Math.floor((currentTime - gameStartTime) / 1000);
+    let elapsedTime = 0;
+    
+    // Find first checkpoint with start time and last checkpoint with end time
+    const firstCheckpointWithStart = team.legs.find(leg => leg.startTime > 0);
+    const lastCheckpointWithEnd = [...team.legs].reverse().find(leg => leg.endTime && leg.endTime > 0);
+    
+    const completionPercentage = team.roadmap.length > 0
+      ? Math.round((team.currentIndex / team.roadmap.length) * 100)
+      : 0;
+      
+    if (firstCheckpointWithStart && lastCheckpointWithEnd && lastCheckpointWithEnd.endTime && completionPercentage === 100) {
+      // For completed teams: time from first start to last end
+      elapsedTime = Math.floor((lastCheckpointWithEnd.endTime - firstCheckpointWithStart.startTime) / 1000);
+    } else if (firstCheckpointWithStart) {
+      // For teams in progress: time from first checkpoint start to current time
+      elapsedTime = Math.floor((currentTime - firstCheckpointWithStart.startTime) / 1000);
+    } else {
+      // For teams that haven't started any checkpoints yet: timer should be 0
+      // Timer only starts when they scan their first checkpoint
+      elapsedTime = 0;
+    }
 
     return {
       roadmap: team.roadmap,
@@ -342,9 +361,23 @@ export class GameService {
       }
     }
 
-    // Update total time to current elapsed time in seconds
-    const gameStartTime = team.gameStartTime || currentTime;
-    const newTotalTime = Math.floor((currentTime - gameStartTime) / 1000);
+    // Update total time based on checkpoint timing (first start to last end)
+    let newTotalTime = 0;
+    
+    // Find first checkpoint with start time
+    const firstCheckpointWithStart = updatedLegs.find(leg => leg.startTime > 0);
+    
+    if (isGameComplete && firstCheckpointWithStart) {
+      // For completed game: calculate time from first checkpoint start to current time (last checkpoint end)
+      newTotalTime = Math.floor((currentTime - firstCheckpointWithStart.startTime) / 1000);
+    } else if (firstCheckpointWithStart) {
+      // For ongoing game: calculate time from first checkpoint start to current time
+      newTotalTime = Math.floor((currentTime - firstCheckpointWithStart.startTime) / 1000);
+    } else {
+      // Fallback to game start time if no checkpoints have been started
+      const gameStartTime = team.gameStartTime || currentTime;
+      newTotalTime = Math.floor((currentTime - gameStartTime) / 1000);
+    }
 
     await FirestoreService.updateTeam(teamId, {
       legs: updatedLegs,
@@ -870,10 +903,26 @@ export class GameService {
           status = "not_started";
         }
 
-        // Calculate total elapsed time since game start
-        const totalTimeElapsed = team.gameStartTime
-          ? Math.floor((currentTime - team.gameStartTime) / 1000)
-          : team.totalTime;
+        // Calculate total elapsed time based on first checkpoint start to last checkpoint end
+        let totalTimeElapsed = 0;
+        
+        // Find first checkpoint with start time and last checkpoint with end time
+        const firstCheckpointWithStart = team.legs.find(leg => leg.startTime > 0);
+        const lastCheckpointWithEnd = [...team.legs].reverse().find(leg => leg.endTime && leg.endTime > 0);
+        
+        if (firstCheckpointWithStart && lastCheckpointWithEnd && lastCheckpointWithEnd.endTime) {
+          // Calculate time between first start and last end
+          totalTimeElapsed = Math.floor((lastCheckpointWithEnd.endTime - firstCheckpointWithStart.startTime) / 1000);
+        } else if (completionPercentage < 100 && firstCheckpointWithStart) {
+          // For teams in progress: calculate from first checkpoint start to current time
+          totalTimeElapsed = Math.floor((currentTime - firstCheckpointWithStart.startTime) / 1000);
+        } else if (team.gameStartTime) {
+          // Fallback to game start time for teams that haven't started any checkpoints
+          totalTimeElapsed = Math.floor((currentTime - team.gameStartTime) / 1000);
+        } else {
+          // Final fallback to stored total time
+          totalTimeElapsed = team.totalTime;
+        }
 
         return {
           teamId: team.id,

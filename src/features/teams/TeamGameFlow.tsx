@@ -110,19 +110,28 @@ export default function TeamGameFlow() {
     localStorage.setItem("teamGameFlowState", JSON.stringify(gameState));
   }, [gameState]);
 
-  // Timer effect for elapsed time
+  // Timer effect for elapsed time - only runs if team has started first checkpoint
   useEffect(() => {
-    if (!gameState.isGameActive) return;
+    if (!gameState.isGameActive || !user?.id) return;
 
-    const interval = setInterval(() => {
-      setGameState((prev) => ({
-        ...prev,
-        elapsedTime: prev.elapsedTime + 1,
-      }));
+    const interval = setInterval(async () => {
+      try {
+        // Get the real elapsed time from backend (first checkpoint start to now)
+        const teamProgress = await GameService.getTeamProgress(user.id);
+        if (teamProgress) {
+          setGameState((prev) => ({
+            ...prev,
+            elapsedTime: teamProgress.elapsedTime,
+            totalPoints: teamProgress.totalPoints,
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to update elapsed time:", error);
+      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [gameState.isGameActive]);
+  }, [gameState.isGameActive, user?.id]);
 
   // Initialize game state on mount
   const initializeGameState = useCallback(async () => {
