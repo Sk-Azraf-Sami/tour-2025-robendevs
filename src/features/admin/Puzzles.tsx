@@ -145,9 +145,22 @@ export default function Puzzles() {
   const handleDelete = async (id: string) => {
     setIsLoading(true);
     try {
+      // Delete the puzzle from the database
       await FirestoreService.deletePuzzle(id);
       message.success("Puzzle deleted successfully");
       setPuzzles((prev) => prev.filter((puzzle) => puzzle.id !== id));
+
+      // Remove the puzzle ID from all teams' roadmaps
+      const teams = await FirestoreService.getAllTeams();
+      const updatePromises = teams.map((team) => {
+        if (team.roadmap && team.roadmap.includes(id)) {
+          const newRoadmap = team.roadmap.filter((pid) => pid !== id);
+          return FirestoreService.updateTeam(team.id, { roadmap: newRoadmap });
+        }
+        return Promise.resolve();
+      });
+      await Promise.all(updatePromises);
+      message.success("Removed puzzle from all team roadmaps");
     } catch (err) {
       message.error("Failed to delete puzzle");
     }
