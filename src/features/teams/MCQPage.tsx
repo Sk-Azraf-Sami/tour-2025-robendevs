@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Button, Radio, Typography, Progress, Alert, message } from 'antd'
+import { Card, Button, Radio, Typography, Progress, Alert, message, notification } from 'antd'
 import { QuestionCircleOutlined, ClockCircleOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 
@@ -23,6 +23,7 @@ export default function MCQPage() {
   const [timeLeft, setTimeLeft] = useState(180) // 3 minutes
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [result, setResult] = useState<'correct' | 'incorrect' | null>(null)
+  const [api, contextHolder] = notification.useNotification();
 
   const mcqData: MCQData = {
     question: 'What year was the Eiffel Tower completed?',
@@ -64,6 +65,14 @@ export default function MCQPage() {
     const isCorrect = selectedAnswer === mcqData.correctAnswer
     setResult(isCorrect ? 'correct' : 'incorrect')
 
+    // Show notification after MCQ submission
+    api.open({
+    message: "Your answer is submitted",
+    description: "Proceeding to the next step(s).",
+    showProgress: true,
+    pauseOnHover: true,
+  });
+
     if (isCorrect) {
       message.success('Correct Answer! Well done! You earned 10 points.')
       setTimeout(() => {
@@ -83,6 +92,7 @@ export default function MCQPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {contextHolder}
       <div className="text-center px-2">
         <Title level={2} className="text-lg sm:text-xl md:text-2xl lg:text-3xl">Checkpoint Question</Title>
         <Text type="secondary" className="text-sm sm:text-base">Answer the multiple choice question to proceed</Text>

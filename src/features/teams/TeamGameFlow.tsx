@@ -105,6 +105,11 @@ export default function TeamGameFlow() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [api, contextHolder] = notification.useNotification();
 
+  // Persist game state to localStorage on every change
+  useEffect(() => {
+    localStorage.setItem("teamGameFlowState", JSON.stringify(gameState));
+  }, [gameState]);
+
   // Timer effect for elapsed time
   useEffect(() => {
     if (!gameState.isGameActive) return;
@@ -151,7 +156,17 @@ export default function TeamGameFlow() {
     }
   }, [user?.id]);
 
+  // Restore game state from localStorage on mount, then fetch backend
   useEffect(() => {
+    const saved = localStorage.getItem("teamGameFlowState");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setGameState(parsed);
+      } catch {
+        // Ignore parse errors
+      }
+    }
     initializeGameState();
   }, [initializeGameState]);
 
